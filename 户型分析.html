@@ -2,16 +2,17 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
 <title>户型分析</title>
 <script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
 <style>
   html, body { height: 100%; margin: 0; }
-  * { box-sizing: border-box; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body {
     display: flex; flex-direction: column; overflow: hidden;
     font: 14px/1.5 -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
     background: #eef1f6; color: #333;
+    touch-action: none; /* 防止移动端页面滚动 */
   }
   header {
     display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
@@ -46,29 +47,51 @@
   }
 
   main { flex: 1; display: flex; min-height: 0; }
-  .stage { flex: 1; position: relative; overflow: hidden; }
-  
-  /* 方向坐标图 - 悬浮于画布右下角 */
+  .stage { flex: 1; position: relative; overflow: hidden; touch-action: none; }
+  .stage canvas { touch-action: none; }
+
+  /* 方向坐标图 - 右下角 */
   .compass {
     position: absolute; right: 24px; bottom: 24px;
     width: 96px; height: 96px;
-    pointer-events: none; /* 不拦截鼠标事件，确保画布操作不受影响 */
+    pointer-events: none;
     z-index: 5;
   }
 
-  .hint {
-    position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
-    color: #b6bec9; font-size: 14px; pointer-events: none; text-align: center;
-    line-height: 2;
-  }
+  /* ===== 右侧图层面板 ===== */
   aside {
     width: 210px; background: #fff; border-left: 1px solid #e3e6eb;
     display: flex; flex-direction: column; min-height: 0;
+    transition: width 0.25s ease;
+    position: relative;
   }
-  aside h2 {
+  aside.collapsed { width: 0; border-left: none; }
+  aside.collapsed .aside-header h2,
+  aside.collapsed #layers { display: none; }
+
+  .aside-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 14px 8px;
+  }
+  .aside-header h2 {
     font-size: 12px; color: #8a94a6; margin: 0;
-    padding: 12px 14px 8px; font-weight: 600; letter-spacing: .5px;
+    font-weight: 600; letter-spacing: .5px;
   }
+  .toggle-layer-btn {
+    background: #fff; border: 1px solid #d5dae2; border-radius: 4px;
+    cursor: pointer; color: #6b7a90; font-size: 12px;
+    width: 22px; height: 22px;
+    display: flex; align-items: center; justify-content: center;
+    transition: 0.2s; padding: 0;
+  }
+  .toggle-layer-btn:hover { border-color: #2f80ed; color: #2f80ed; }
+  aside.collapsed .toggle-layer-btn {
+    position: absolute; left: -28px; top: 10px;
+    border-right: none; border-radius: 6px 0 0 6px;
+    width: 28px; height: 32px; z-index: 10;
+    box-shadow: -2px 0 5px rgba(0,0,0,0.05);
+  }
+
   #layers { flex: 1; overflow: auto; padding: 0 8px 8px; }
   .layer {
     display: flex; align-items: center; gap: 8px; padding: 8px 10px;
@@ -83,6 +106,20 @@
   .layer .del { color: #b0b8c4; font-size: 16px; line-height: 1; padding: 0 2px; }
   .layer .del:hover { color: #e5484d; }
   .empty { color: #aeb6c2; font-size: 12px; padding: 6px; }
+
+  .hint {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
+    color: #b6bec9; font-size: 14px; pointer-events: none; text-align: center;
+    line-height: 2;
+  }
+
+  /* 移动端适配 */
+  @media (max-width: 640px) {
+    .compass { width: 78px; height: 78px; right: 16px; bottom: 16px; }
+    header h1 { font-size: 14px; letter-spacing: 1px; }
+    .btn { padding: 6px 10px; font-size: 12px; }
+    aside { width: 160px; }
+  }
 </style>
 </head>
 <body>
@@ -117,8 +154,8 @@
 <main>
   <div class="stage" id="stage">
     <canvas id="c"></canvas>
-    
-    <!-- 方向坐标图（“北”字在上，红色箭头在下） -->
+
+    <!-- 方向坐标图 -->
     <div class="compass" title="方向指示（东、南、西、北）">
       <svg viewBox="0 0 100 100" width="100%" height="100%">
         <defs>
@@ -126,24 +163,14 @@
             <feDropShadow dx="0" dy="1" stdDeviation="1.5" flood-color="#000" flood-opacity="0.12"/>
           </filter>
         </defs>
-
-        <!-- 外圈底盘 -->
         <circle cx="50" cy="50" r="46" fill="rgba(255,255,255,0.92)"
                 stroke="#d5dae2" stroke-width="1.5" filter="url(#shadow)"/>
-
-        <!-- 十字辅助线（只保留下半与水平方向，避免穿过顶部文字和箭头） -->
         <path d="M50,50 L50,80 M20,50 L80,50"
               stroke="#eef1f6" stroke-width="1.5" stroke-linecap="round"/>
-
-        <!-- “北”字：位于顶部，红色加粗 -->
         <text x="50" y="20" text-anchor="middle" dominant-baseline="middle"
               font-size="14" fill="#e5484d" font-weight="bold"
               font-family='"PingFang SC","Microsoft YaHei",sans-serif'>北</text>
-
-        <!-- 北向红色箭头：位于“北”字正下方，指向上方 -->
         <polygon points="50,32 44,44 56,44" fill="#e5484d"/>
-
-        <!-- 其他方向文字 -->
         <text x="50" y="86" text-anchor="middle" dominant-baseline="middle"
               font-size="13" fill="#6b7280"
               font-family='"PingFang SC","Microsoft YaHei",sans-serif'>南</text>
@@ -160,8 +187,12 @@
       请先上传户型图，或添加内置图层
     </div>
   </div>
-  <aside>
-    <h2>图层</h2>
+
+  <aside id="layerPanel">
+    <div class="aside-header">
+      <h2>图层</h2>
+      <button class="toggle-layer-btn" id="toggleLayerBtn" title="折叠图层面板">◀</button>
+    </div>
     <div id="layers"></div>
   </aside>
 </main>
@@ -177,8 +208,8 @@ const layersEl = document.getElementById('layers');
 const canvas = new fabric.Canvas('c', {
   backgroundColor: '#ffffff',
   preserveObjectStacking: true,
-  uniScaleTransform: true,   // 角点拖拽默认等比缩放
-  selection: false,          // 关闭框选
+  uniScaleTransform: true,
+  selection: false,
 });
 
 fabric.Object.prototype.set({
@@ -187,7 +218,8 @@ fabric.Object.prototype.set({
   cornerColor: '#2f80ed',
   cornerStrokeColor: '#ffffff',
   cornerStyle: 'circle',
-  cornerSize: 12,
+  cornerSize: 14,       // 移动端稍大一些的触摸手柄
+  padding: 4,
   transparentCorners: false,
 });
 
@@ -202,7 +234,125 @@ window.addEventListener('resize', resizeStage);
 resizeStage();
 
 /* =====================================================
-   2. 内置图层（矢量绘制，天然透明底）
+   2. 图层面板折叠
+   ===================================================== */
+const layerPanel = document.getElementById('layerPanel');
+const toggleLayerBtn = document.getElementById('toggleLayerBtn');
+
+toggleLayerBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  const isCollapsed = layerPanel.classList.toggle('collapsed');
+  toggleLayerBtn.textContent = isCollapsed ? '▶' : '◀';
+  toggleLayerBtn.title = isCollapsed ? '展开图层面板' : '折叠图层面板';
+  setTimeout(resizeStage, 260);
+});
+
+/* =====================================================
+   3. ★★★ 双指手势操作（手机触摸屏核心功能）★★★
+   =====================================================
+   功能：
+   - 单指触摸：由 fabric 处理，可拖动、点击选中图层
+   - 双指触摸：捏合缩放 / 旋转 / 平移当前选中的图层
+   ===================================================== */
+
+let touchGesture = null;
+
+/** 提取两指之间的距离、角度、中心点 */
+function getTouchInfo(touches) {
+  const t1 = touches[0];
+  const t2 = touches[1];
+  const dx = t2.clientX - t1.clientX;
+  const dy = t2.clientY - t1.clientY;
+  return {
+    dist: Math.hypot(dx, dy),
+    angle: Math.atan2(dy, dx) * 180 / Math.PI,
+    center: {
+      x: (t1.clientX + t2.clientX) / 2,
+      y: (t1.clientY + t2.clientY) / 2,
+    },
+  };
+}
+
+/** 双指手势开始 —— 在 stageEl 的捕获阶段拦截，阻止 fabric 处理 */
+function onGestureStart(e) {
+  if (e.touches.length !== 2) return;
+
+  const activeObj = canvas.getActiveObject();
+  if (!activeObj) return;   // 无选中图层时不接管手势
+
+  // 阻止事件传播到 fabric.js 的画布
+  e.stopPropagation();
+  e.preventDefault();
+
+  const info = getTouchInfo(e.touches);
+
+  touchGesture = {
+    // 手势基准数据
+    startDist:   info.dist,
+    startAngle:  info.angle,
+    startCenter: { x: info.center.x, y: info.center.y },
+    // 图层初始状态
+    obj:         activeObj,
+    objScaleX:   activeObj.scaleX,
+    objScaleY:   activeObj.scaleY,
+    objAngle:    activeObj.angle,
+    objLeft:     activeObj.left,
+    objTop:      activeObj.top,
+  };
+}
+
+/** 双指手势移动 —— 同时处理缩放、旋转、平移 */
+function onGestureMove(e) {
+  if (!touchGesture || e.touches.length !== 2) return;
+
+  e.stopPropagation();
+  e.preventDefault();
+
+  const info = getTouchInfo(e.touches);
+  const obj = touchGesture.obj;
+
+  // 缩放系数（当前两指距离 / 起始两指距离）
+  const scaleFactor = info.dist / touchGesture.startDist;
+  // 旋转角度差
+  const angleDiff = info.angle - touchGesture.startAngle;
+  // 平移偏移（中心点位移）
+  const dx = info.center.x - touchGesture.startCenter.x;
+  const dy = info.center.y - touchGesture.startCenter.y;
+
+  // 应用变换
+  obj.scaleX = touchGesture.objScaleX * scaleFactor;
+  obj.scaleY = touchGesture.objScaleY * scaleFactor;
+  obj.angle  = touchGesture.objAngle + angleDiff;
+  obj.left   = touchGesture.objLeft + dx;
+  obj.top    = touchGesture.objTop + dy;
+
+  // 防止缩放为 0 或负数导致消失
+  if (Math.abs(obj.scaleX) < 0.01) obj.scaleX = 0.01;
+  if (Math.abs(obj.scaleY) < 0.01) obj.scaleY = 0.01;
+
+  obj.setCoords();
+  canvas.requestRenderAll();
+}
+
+/** 双指手势结束 —— 少于两个触摸点时清除手势状态 */
+function onGestureEnd(e) {
+  if (!touchGesture) return;
+  if (e.touches.length < 2) {
+    touchGesture = null;
+  }
+}
+
+// 关键：使用捕获阶段（capture: true），在 fabric 之前拦截事件
+stageEl.addEventListener('touchstart',  onGestureStart, { capture: true, passive: false });
+stageEl.addEventListener('touchmove',   onGestureMove,  { capture: true, passive: false });
+stageEl.addEventListener('touchend',    onGestureEnd,   { capture: true, passive: false });
+stageEl.addEventListener('touchcancel', onGestureEnd,   { capture: true, passive: false });
+
+// 阻止移动端画布区域默认的浏览器手势（如页面缩放）
+stageEl.addEventListener('gesturestart', (e) => e.preventDefault());
+
+/* =====================================================
+   4. 内置图层（矢量绘制）
    ===================================================== */
 const PRESETS = {
   jiugong: {
@@ -231,9 +381,6 @@ const PRESETS = {
 
 let currentColor = '#1a7f7a';
 
-/**
- * 创建内置矢量图层（Group）
- */
 function createPresetGroup(key, color) {
   const p    = PRESETS[key];
   const cols = p.cols;
@@ -242,7 +389,6 @@ function createPresetGroup(key, color) {
   const lineW = Math.max(1.4, cell * 0.022);
   const items = [];
 
-  // 网格线
   for (let i = 0; i <= cols; i++) {
     items.push(new fabric.Line([i * cell, 0, i * cell, size], {
       stroke: color, strokeWidth: lineW,
@@ -252,7 +398,6 @@ function createPresetGroup(key, color) {
     }));
   }
 
-  // 文字
   p.labels.forEach((row, r) => {
     row.forEach((ch, c) => {
       if (!ch) return;
@@ -285,7 +430,6 @@ function createPresetGroup(key, color) {
   return g;
 }
 
-/** 修改内置图层颜色（文字 + 网格线） */
 function applyPresetColor(group, color) {
   group.getObjects().forEach((o) => {
     if (o.type === 'text')      o.set('fill', color);
@@ -310,7 +454,7 @@ document.getElementById('btnJiugong').onclick  = () => addPresetLayer('jiugong')
 document.getElementById('btnErshisi').onclick  = () => addPresetLayer('ershisi');
 
 /* =====================================================
-   3. 工具函数
+   5. 工具函数
    ===================================================== */
 function readAsDataURL(file) {
   return new Promise((resolve, reject) => {
@@ -326,7 +470,7 @@ function updateHint() {
 }
 
 /* =====================================================
-   4. 上传户型图（始终置于最底层）
+   6. 上传户型图（始终置于最底层）
    ===================================================== */
 async function addImageLayer(file) {
   if (!file || !file.type.startsWith('image/')) return;
@@ -352,7 +496,7 @@ async function addImageLayer(file) {
       img.isPreset  = false;
 
       canvas.add(img);
-      canvas.sendToBack(img);   // 户型图永远在最底层
+      canvas.sendToBack(img);
       canvas.setActiveObject(img);
       canvas.requestRenderAll();
 
@@ -372,7 +516,7 @@ document.getElementById('fileA').addEventListener('change', async (e) => {
 });
 
 /* =====================================================
-   5. 颜色调节
+   7. 颜色调节
    ===================================================== */
 const colorPicker = document.getElementById('colorPicker');
 
@@ -388,10 +532,10 @@ colorPicker.addEventListener('input', (e) => {
 });
 
 /* =====================================================
-   6. 图层面板
+   8. 图层面板列表
    ===================================================== */
 function refreshLayers() {
-  const objs    = canvas.getObjects().slice().reverse(); // 顶层排最前
+  const objs    = canvas.getObjects().slice().reverse();
   const actives = canvas.getActiveObjects();
 
   layersEl.innerHTML = '';
@@ -445,7 +589,7 @@ canvas.on('selection:updated', refreshLayers);
 canvas.on('selection:cleared', refreshLayers);
 
 /* =====================================================
-   7. 删除 / 清空
+   9. 删除 / 清空
    ===================================================== */
 function deleteSelected() {
   const objs = canvas.getActiveObjects();
@@ -481,7 +625,7 @@ window.addEventListener('keydown', (e) => {
 });
 
 /* =====================================================
-   8. 保存分析图（裁剪到内容范围）
+   10. 保存分析图（裁剪到内容范围）
    ===================================================== */
 document.getElementById('btnExport').onclick = () => {
   const objs = canvas.getObjects();
@@ -490,11 +634,9 @@ document.getElementById('btnExport').onclick = () => {
     return;
   }
 
-  // 取消选中，避免把控制点画进去
   canvas.discardActiveObject();
   canvas.requestRenderAll();
 
-  // 计算内容包围盒
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   objs.forEach((o) => {
     const r = o.getBoundingRect(true, true);
@@ -517,7 +659,7 @@ document.getElementById('btnExport').onclick = () => {
   const dataURL = canvas.toDataURL({
     format: 'png',
     quality: 1,
-    multiplier: 2,          // 2 倍分辨率，更清晰
+    multiplier: 2,
     left: minX,
     top: minY,
     width: w,
@@ -533,7 +675,7 @@ document.getElementById('btnExport').onclick = () => {
 };
 
 /* =====================================================
-   9. 启动
+   11. 启动
    ===================================================== */
 refreshLayers();
 updateHint();

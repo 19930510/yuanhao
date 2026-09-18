@@ -12,7 +12,7 @@
     display: flex; flex-direction: column; overflow: hidden;
     font: 14px/1.5 -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
     background: #eef1f6; color: #333;
-    touch-action: none; /* 防止移动端页面滚动 */
+    touch-action: none;
   }
   header {
     display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
@@ -32,6 +32,8 @@
   .btn:hover { border-color: #2f80ed; color: #2f80ed; background: #f7faff; }
   .btn.primary { background: #2f80ed; border-color: #2f80ed; color: #fff; }
   .btn.primary:hover { background: #1c6fdc; color: #fff; }
+  .btn.success { background: #10b981; border-color: #10b981; color: #fff; }
+  .btn.success:hover { background: #059669; border-color: #059669; color: #fff; }
   .btn input[type=file] { display: none; }
   .divider { width: 1px; height: 22px; background: #e3e6eb; margin: 0 4px; }
   .spacer { flex: 1; }
@@ -50,7 +52,6 @@
   .stage { flex: 1; position: relative; overflow: hidden; touch-action: none; }
   .stage canvas { touch-action: none; }
 
-  /* 方向坐标图 - 右下角 */
   .compass {
     position: absolute; right: 24px; bottom: 24px;
     width: 96px; height: 96px;
@@ -58,7 +59,6 @@
     z-index: 5;
   }
 
-  /* ===== 右侧图层面板 ===== */
   aside {
     width: 210px; background: #fff; border-left: 1px solid #e3e6eb;
     display: flex; flex-direction: column; min-height: 0;
@@ -113,12 +113,164 @@
     line-height: 2;
   }
 
-  /* 移动端适配 */
+  .modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    width: 100%; height: 100%;
+    background: rgba(15, 23, 42, 0.55);
+    -webkit-backdrop-filter: blur(3px);
+    backdrop-filter: blur(3px);
+    display: none;
+    align-items: center; justify-content: center;
+    z-index: 9999;
+    padding: 20px;
+  }
+  .modal-overlay.show { display: flex; }
+
+  .modal {
+    background: #fff; border-radius: 12px;
+    width: 100%; max-width: 720px;
+    max-height: 80vh;
+    display: flex; flex-direction: column;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+    overflow: hidden;
+    animation: popIn .2s ease;
+  }
+  @keyframes popIn {
+    from { transform: scale(.95); opacity: 0; }
+    to   { transform: scale(1); opacity: 1; }
+  }
+
+  .modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 20px;
+    border-bottom: 1px solid #e3e6eb;
+  }
+  .modal-header h2 {
+    font-size: 16px; margin: 0; color: #1f2a44; font-weight: 700;
+    letter-spacing: 1px;
+  }
+  .modal-close {
+    background: none; border: none; cursor: pointer;
+    font-size: 24px; line-height: 1; color: #9aa4b2;
+    padding: 0 4px;
+  }
+  .modal-close:hover { color: #e5484d; }
+
+  .modal-body { flex: 1; overflow: auto; padding: 16px 20px; }
+
+  .modal-footer {
+    padding: 12px 20px; border-top: 1px solid #e3e6eb;
+    display: flex; justify-content: space-between; align-items: center;
+    background: #fafbfc;
+  }
+  .modal-footer .count { color: #8a94a6; font-size: 12px; }
+  .btn.danger { color: #e5484d; border-color: #f5c2c5; }
+  .btn.danger:hover { background: #fff5f5; border-color: #e5484d; color: #e5484d; }
+
+  .name-modal { max-width: 420px; max-height: none; }
+  .name-modal .modal-body { padding: 18px 20px; }
+  .name-input {
+    width: 100%; padding: 10px 12px; font-size: 15px;
+    border: 1px solid #d5dae2; border-radius: 8px;
+    background: #fafbfc; color: #1f2a44;
+    outline: none; transition: .15s;
+    font-family: inherit;
+  }
+  .name-input:focus {
+    border-color: #2f80ed; background: #fff;
+    box-shadow: 0 0 0 3px rgba(47, 128, 237, 0.12);
+  }
+  .name-tip { font-size: 12px; color: #8a94a6; margin-top: 8px; }
+
+  .history-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+  }
+  .history-item {
+    border: 1px solid #e3e6eb; border-radius: 8px;
+    overflow: hidden; cursor: pointer;
+    transition: .15s;
+    background: #fafbfc;
+    position: relative;
+  }
+  .history-item:hover {
+    border-color: #2f80ed;
+    box-shadow: 0 4px 12px rgba(47, 128, 237, 0.12);
+    transform: translateY(-2px);
+  }
+  .history-item img {
+    width: 100%; height: 110px;
+    object-fit: cover; display: block;
+    background: #fff;
+  }
+  .history-item .info {
+    padding: 8px 10px;
+    font-size: 12px; color: #556;
+  }
+  .history-item .info .name {
+    display: block; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap;
+    color: #1f2a44; font-weight: 600;
+    margin-bottom: 2px;
+  }
+  .history-item .info .time { color: #9aa4b2; font-size: 11px; }
+
+  .history-item .type-tag {
+    position: absolute; top: 6px; left: 6px;
+    background: rgba(107, 122, 144, 0.92);
+    color: #fff; font-size: 10px;
+    padding: 2px 7px; border-radius: 4px;
+    font-weight: 600; letter-spacing: .3px;
+    z-index: 2;
+  }
+  .history-item .type-tag.analyzed {
+    background: rgba(16, 185, 129, 0.92);
+  }
+
+  .history-item .actions {
+    position: absolute; top: 6px; right: 6px;
+    display: flex; gap: 4px;
+    opacity: 0; transition: .15s;
+    z-index: 2;
+  }
+  .history-item:hover .actions { opacity: 1; }
+  .actions button {
+    width: 26px; height: 26px; border-radius: 50%;
+    background: rgba(255,255,255,0.96);
+    border: 1px solid #e3e6eb;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; color: #6b7a90; padding: 0;
+    transition: .15s;
+  }
+  .actions button:hover { color: #2f80ed; border-color: #2f80ed; background: #fff; }
+  .actions button.del:hover { color: #e5484d; border-color: #e5484d; }
+  .actions button.dl:hover { color: #10b981; border-color: #10b981; }
+
+  @media (hover: none) {
+    .history-item .actions { opacity: 1; }
+  }
+
+  .history-empty {
+    text-align: center; padding: 40px 20px;
+    color: #aeb6c2; font-size: 14px;
+  }
+  .history-empty .big { font-size: 36px; display: block; margin-bottom: 8px; opacity: .5; }
+
+  .storage-info {
+    font-size: 11px; color: #8a94a6;
+    margin-top: 4px;
+  }
+
   @media (max-width: 640px) {
     .compass { width: 78px; height: 78px; right: 16px; bottom: 16px; }
     header h1 { font-size: 14px; letter-spacing: 1px; }
     .btn { padding: 6px 10px; font-size: 12px; }
     aside { width: 160px; }
+    .history-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+    .history-item img { height: 90px; }
   }
 </style>
 </head>
@@ -126,36 +278,28 @@
 
 <header>
   <h1>户型分析</h1>
-
   <label class="btn">
     ＋ 上传户型图
     <input type="file" id="fileA" accept="image/*" multiple>
   </label>
-
+  <button class="btn" id="btnHistory">📂 历史户型图</button>
   <span class="divider"></span>
-
   <button class="btn" id="btnJiugong">＋ 九宫网格</button>
   <button class="btn" id="btnErshisi">＋ 二十四山</button>
-
   <span class="divider"></span>
-
   <label class="color-field">
-    文字颜色
+    显示颜色
     <input type="color" id="colorPicker" value="#1a7f7a">
   </label>
-
   <button class="btn" id="btnDelete">删除选中</button>
-  <button class="btn" id="btnClear">清空</button>
-
   <span class="spacer"></span>
-  <button class="btn primary" id="btnExport">保存分析图</button>
+  <button class="btn success" id="btnSaveHistory">保存到历史</button>
+  <button class="btn primary" id="btnDownload">下载分析图</button>
 </header>
 
 <main>
   <div class="stage" id="stage">
     <canvas id="c"></canvas>
-
-    <!-- 方向坐标图 -->
     <div class="compass" title="方向指示（东、南、西、北）">
       <svg viewBox="0 0 100 100" width="100%" height="100%">
         <defs>
@@ -182,10 +326,7 @@
               font-family='"PingFang SC","Microsoft YaHei",sans-serif'>西</text>
       </svg>
     </div>
-
-    <div class="hint" id="hint">
-      请先上传户型图，或添加内置图层
-    </div>
+    <div class="hint" id="hint">请先上传户型图，或添加内置图层</div>
   </div>
 
   <aside id="layerPanel">
@@ -197,15 +338,62 @@
   </aside>
 </main>
 
+<!-- 命名输入模态框 -->
+<div class="modal-overlay" id="nameModal">
+  <div class="modal name-modal">
+    <div class="modal-header">
+      <h2 id="nameModalTitle">命名户型图</h2>
+      <button class="modal-close" id="nameModalClose">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="text" class="name-input" id="nameInput"
+             placeholder="例如：张三家的户型图" maxlength="50" />
+      <div class="name-tip">按 Enter 快速确定，或点击下方按钮</div>
+    </div>
+    <div class="modal-footer" style="justify-content: flex-end; gap: 8px;">
+      <button class="btn" id="nameCancel">取消</button>
+      <button class="btn primary" id="nameConfirm">确定</button>
+    </div>
+  </div>
+</div>
+
+<!-- 历史户型图模态框 -->
+<div class="modal-overlay" id="historyModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>历史户型图</h2>
+      <button class="modal-close" id="historyClose">×</button>
+    </div>
+    <div class="modal-body" id="historyList"></div>
+    <div class="modal-footer">
+      <div>
+        <span class="count" id="historyCount">共 0 张</span>
+        <div class="storage-info" id="storageInfo"></div>
+      </div>
+      <button class="btn danger" id="historyClearAll">清空全部历史</button>
+    </div>
+  </div>
+</div>
+
 <script>
+/* =====================================================
+   0. 环境检查
+   ===================================================== */
+if (typeof fabric === 'undefined') {
+  alert('页面加载失败：fabric.js 库未能加载。\n\n请检查：\n1. 网络是否正常\n2. 是否开启了广告拦截插件\n3. 刷新页面重试');
+}
+
+(function() {
+'use strict';
+
 /* =====================================================
    1. 初始化画布
    ===================================================== */
-const stageEl  = document.getElementById('stage');
-const hintEl   = document.getElementById('hint');
-const layersEl = document.getElementById('layers');
+var stageEl  = document.getElementById('stage');
+var hintEl   = document.getElementById('hint');
+var layersEl = document.getElementById('layers');
 
-const canvas = new fabric.Canvas('c', {
+var canvas = new fabric.Canvas('c', {
   backgroundColor: '#ffffff',
   preserveObjectStacking: true,
   uniScaleTransform: true,
@@ -218,7 +406,7 @@ fabric.Object.prototype.set({
   cornerColor: '#2f80ed',
   cornerStrokeColor: '#ffffff',
   cornerStyle: 'circle',
-  cornerSize: 14,       // 移动端稍大一些的触摸手柄
+  cornerSize: 14,
   padding: 4,
   transparentCorners: false,
 });
@@ -236,35 +424,81 @@ resizeStage();
 /* =====================================================
    2. 图层面板折叠
    ===================================================== */
-const layerPanel = document.getElementById('layerPanel');
-const toggleLayerBtn = document.getElementById('toggleLayerBtn');
+var layerPanel = document.getElementById('layerPanel');
+var toggleLayerBtn = document.getElementById('toggleLayerBtn');
 
-toggleLayerBtn.addEventListener('click', (e) => {
+toggleLayerBtn.addEventListener('click', function(e) {
   e.stopPropagation();
-  const isCollapsed = layerPanel.classList.toggle('collapsed');
+  var isCollapsed = layerPanel.classList.toggle('collapsed');
   toggleLayerBtn.textContent = isCollapsed ? '▶' : '◀';
   toggleLayerBtn.title = isCollapsed ? '展开图层面板' : '折叠图层面板';
   setTimeout(resizeStage, 260);
 });
 
 /* =====================================================
-   3. ★★★ 双指手势操作（手机触摸屏核心功能）★★★
-   =====================================================
-   功能：
-   - 单指触摸：由 fabric 处理，可拖动、点击选中图层
-   - 双指触摸：捏合缩放 / 旋转 / 平移当前选中的图层
+   3. 命名输入模态框
    ===================================================== */
+var nameModal      = document.getElementById('nameModal');
+var nameInput      = document.getElementById('nameInput');
+var nameModalTitle = document.getElementById('nameModalTitle');
+var nameModalResolve = null;
 
-let touchGesture = null;
+function askName(defaultName, title) {
+  title = title || '命名户型图';
+  return new Promise(function(resolve) {
+    nameModalResolve = resolve;
+    nameModalTitle.textContent = title;
+    nameInput.value = defaultName || '';
+    nameModal.classList.add('show');
+    setTimeout(function() {
+      try { nameInput.focus(); nameInput.select(); } catch (err) {}
+    }, 120);
+  });
+}
 
-/** 提取两指之间的距离、角度、中心点 */
+function closeNameModal(result) {
+  nameModal.classList.remove('show');
+  if (nameModalResolve) {
+    var r = nameModalResolve;
+    nameModalResolve = null;
+    r(result);
+  }
+}
+
+document.getElementById('nameConfirm').onclick = function() {
+  var v = nameInput.value.trim();
+  closeNameModal(v || '未命名户型');
+};
+document.getElementById('nameCancel').onclick    = function() { closeNameModal(null); };
+document.getElementById('nameModalClose').onclick = function() { closeNameModal(null); };
+
+nameInput.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    document.getElementById('nameConfirm').click();
+  }
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    closeNameModal(null);
+  }
+});
+
+nameModal.addEventListener('click', function(e) {
+  if (e.target === nameModal) closeNameModal(null);
+});
+
+/* =====================================================
+   4. 双指手势
+   ===================================================== */
+var touchGesture = null;
+
 function getTouchInfo(touches) {
-  const t1 = touches[0];
-  const t2 = touches[1];
-  const dx = t2.clientX - t1.clientX;
-  const dy = t2.clientY - t1.clientY;
+  var t1 = touches[0];
+  var t2 = touches[1];
+  var dx = t2.clientX - t1.clientX;
+  var dy = t2.clientY - t1.clientY;
   return {
-    dist: Math.hypot(dx, dy),
+    dist: Math.sqrt(dx * dx + dy * dy),
     angle: Math.atan2(dy, dx) * 180 / Math.PI,
     center: {
       x: (t1.clientX + t2.clientX) / 2,
@@ -273,25 +507,19 @@ function getTouchInfo(touches) {
   };
 }
 
-/** 双指手势开始 —— 在 stageEl 的捕获阶段拦截，阻止 fabric 处理 */
 function onGestureStart(e) {
   if (e.touches.length !== 2) return;
+  var activeObj = canvas.getActiveObject();
+  if (!activeObj) return;
 
-  const activeObj = canvas.getActiveObject();
-  if (!activeObj) return;   // 无选中图层时不接管手势
-
-  // 阻止事件传播到 fabric.js 的画布
   e.stopPropagation();
   e.preventDefault();
 
-  const info = getTouchInfo(e.touches);
-
+  var info = getTouchInfo(e.touches);
   touchGesture = {
-    // 手势基准数据
     startDist:   info.dist,
     startAngle:  info.angle,
     startCenter: { x: info.center.x, y: info.center.y },
-    // 图层初始状态
     obj:         activeObj,
     objScaleX:   activeObj.scaleX,
     objScaleY:   activeObj.scaleY,
@@ -301,60 +529,74 @@ function onGestureStart(e) {
   };
 }
 
-/** 双指手势移动 —— 同时处理缩放、旋转、平移 */
 function onGestureMove(e) {
   if (!touchGesture || e.touches.length !== 2) return;
-
   e.stopPropagation();
   e.preventDefault();
 
-  const info = getTouchInfo(e.touches);
-  const obj = touchGesture.obj;
+  var info = getTouchInfo(e.touches);
+  var obj = touchGesture.obj;
 
-  // 缩放系数（当前两指距离 / 起始两指距离）
-  const scaleFactor = info.dist / touchGesture.startDist;
-  // 旋转角度差
-  const angleDiff = info.angle - touchGesture.startAngle;
-  // 平移偏移（中心点位移）
-  const dx = info.center.x - touchGesture.startCenter.x;
-  const dy = info.center.y - touchGesture.startCenter.y;
+  var scaleFactor = info.dist / touchGesture.startDist;
+  var angleDiff = info.angle - touchGesture.startAngle;
+  var dx = info.center.x - touchGesture.startCenter.x;
+  var dy = info.center.y - touchGesture.startCenter.y;
 
-  // 应用变换
   obj.scaleX = touchGesture.objScaleX * scaleFactor;
   obj.scaleY = touchGesture.objScaleY * scaleFactor;
   obj.angle  = touchGesture.objAngle + angleDiff;
   obj.left   = touchGesture.objLeft + dx;
   obj.top    = touchGesture.objTop + dy;
 
-  // 防止缩放为 0 或负数导致消失
   if (Math.abs(obj.scaleX) < 0.01) obj.scaleX = 0.01;
   if (Math.abs(obj.scaleY) < 0.01) obj.scaleY = 0.01;
+
+  if (obj.isPreset) updateTextOrientations(obj);
 
   obj.setCoords();
   canvas.requestRenderAll();
 }
 
-/** 双指手势结束 —— 少于两个触摸点时清除手势状态 */
 function onGestureEnd(e) {
   if (!touchGesture) return;
-  if (e.touches.length < 2) {
-    touchGesture = null;
-  }
+  if (e.touches.length < 2) touchGesture = null;
 }
 
-// 关键：使用捕获阶段（capture: true），在 fabric 之前拦截事件
 stageEl.addEventListener('touchstart',  onGestureStart, { capture: true, passive: false });
 stageEl.addEventListener('touchmove',   onGestureMove,  { capture: true, passive: false });
 stageEl.addEventListener('touchend',    onGestureEnd,   { capture: true, passive: false });
 stageEl.addEventListener('touchcancel', onGestureEnd,   { capture: true, passive: false });
-
-// 阻止移动端画布区域默认的浏览器手势（如页面缩放）
-stageEl.addEventListener('gesturestart', (e) => e.preventDefault());
+stageEl.addEventListener('gesturestart', function(e) { e.preventDefault(); });
 
 /* =====================================================
-   4. 内置图层（矢量绘制）
+   5. 预设图层文字保持正向
    ===================================================== */
-const PRESETS = {
+function updateTextOrientations(group) {
+  if (!group || !group.isPreset) return;
+  var groupAngle = group.angle || 0;
+  group.forEachObject(function(obj) {
+    if (obj.type === 'text') obj.set('angle', -groupAngle);
+  });
+  group.dirty = true;
+}
+
+canvas.on('object:rotating', function(e) {
+  var t = e.target;
+  if (t && t.isPreset) { updateTextOrientations(t); canvas.requestRenderAll(); }
+});
+canvas.on('object:modified', function(e) {
+  var t = e.target;
+  if (t && t.isPreset) { updateTextOrientations(t); canvas.requestRenderAll(); }
+});
+canvas.on('object:scaling', function(e) {
+  var t = e.target;
+  if (t && t.isPreset) updateTextOrientations(t);
+});
+
+/* =====================================================
+   6. 内置图层
+   ===================================================== */
+var PRESETS = {
   jiugong: {
     name: '九宫网格',
     cols: 3,
@@ -379,17 +621,17 @@ const PRESETS = {
   },
 };
 
-let currentColor = '#1a7f7a';
+var currentColor = '#1a7f7a';
 
 function createPresetGroup(key, color) {
-  const p    = PRESETS[key];
-  const cols = p.cols;
-  const size = Math.min(canvas.getWidth(), canvas.getHeight()) * 0.8;
-  const cell = size / cols;
-  const lineW = Math.max(1.4, cell * 0.022);
-  const items = [];
+  var p    = PRESETS[key];
+  var cols = p.cols;
+  var size = Math.min(canvas.getWidth(), canvas.getHeight()) * 0.8;
+  var cell = size / cols;
+  var lineW = Math.max(1.4, cell * 0.022);
+  var items = [];
 
-  for (let i = 0; i <= cols; i++) {
+  for (var i = 0; i <= cols; i++) {
     items.push(new fabric.Line([i * cell, 0, i * cell, size], {
       stroke: color, strokeWidth: lineW,
     }));
@@ -398,27 +640,26 @@ function createPresetGroup(key, color) {
     }));
   }
 
-  p.labels.forEach((row, r) => {
-    row.forEach((ch, c) => {
+  p.labels.forEach(function(row, r) {
+    row.forEach(function(ch, c) {
       if (!ch) return;
       items.push(new fabric.Text(ch, {
         left: c * cell + cell / 2,
         top:  r * cell + cell / 2,
-        originX: 'center',
-        originY: 'center',
+        originX: 'center', originY: 'center',
         fontSize: cell * 0.66,
         fontFamily: '"KaiTi","STKaiti","Kaiti SC","楷体","Songti SC",serif',
         fontWeight: 'bold',
         fill: color,
+        angle: 0,
       }));
     });
   });
 
-  const g = new fabric.Group(items, {
+  var g = new fabric.Group(items, {
     left: canvas.getWidth() / 2,
     top:  canvas.getHeight() / 2,
-    originX: 'center',
-    originY: 'center',
+    originX: 'center', originY: 'center',
     objectCaching: false,
     subTargetCheck: false,
   });
@@ -431,7 +672,7 @@ function createPresetGroup(key, color) {
 }
 
 function applyPresetColor(group, color) {
-  group.getObjects().forEach((o) => {
+  group.getObjects().forEach(function(o) {
     if (o.type === 'text')      o.set('fill', color);
     else if (o.type === 'line') o.set('stroke', color);
     o.dirty = true;
@@ -441,7 +682,7 @@ function applyPresetColor(group, color) {
 }
 
 function addPresetLayer(key) {
-  const g = createPresetGroup(key, currentColor);
+  var g = createPresetGroup(key, currentColor);
   canvas.add(g);
   canvas.bringToFront(g);
   canvas.setActiveObject(g);
@@ -450,17 +691,17 @@ function addPresetLayer(key) {
   updateHint();
 }
 
-document.getElementById('btnJiugong').onclick  = () => addPresetLayer('jiugong');
-document.getElementById('btnErshisi').onclick  = () => addPresetLayer('ershisi');
+document.getElementById('btnJiugong').onclick  = function() { addPresetLayer('jiugong'); };
+document.getElementById('btnErshisi').onclick  = function() { addPresetLayer('ershisi'); };
 
 /* =====================================================
-   5. 工具函数
+   7. 工具函数
    ===================================================== */
 function readAsDataURL(file) {
-  return new Promise((resolve, reject) => {
-    const fr = new FileReader();
-    fr.onload  = () => resolve(fr.result);
-    fr.onerror = reject;
+  return new Promise(function(resolve, reject) {
+    var fr = new FileReader();
+    fr.onload  = function() { resolve(fr.result); };
+    fr.onerror = function() { reject(new Error('文件读取失败')); };
     fr.readAsDataURL(file);
   });
 }
@@ -469,75 +710,481 @@ function updateHint() {
   hintEl.style.display = canvas.getObjects().length ? 'none' : 'block';
 }
 
+function sanitizeFileName(name) {
+  return (name || '户型分析').replace(/[\\/:*?"<>|]/g, '_').trim() || '户型分析';
+}
+
+function pad2(n) { return String(n).padStart(2, '0'); }
+
+function getTimestamp() {
+  var ts = new Date();
+  return ts.getFullYear() + pad2(ts.getMonth() + 1) + pad2(ts.getDate()) +
+         '_' + pad2(ts.getHours()) + pad2(ts.getMinutes()) + pad2(ts.getSeconds());
+}
+
 /* =====================================================
-   6. 上传户型图（始终置于最底层）
+   8. ★★★ 生成合并图（核心，已修复）★★★
+   =====================================================
+   修复要点：
+   1. 使用 canvas.renderAll() 同步渲染，确保画布已刷新
+   2. 加 try/catch 捕获 toDataURL 错误
+   3. 检查返回值是否有效（避免空 dataURL）
+   4. 支持 PNG / JPEG 格式切换（JPEG 体积更小）
    ===================================================== */
-async function addImageLayer(file) {
-  if (!file || !file.type.startsWith('image/')) return;
+function generateMergedImage(multiplier, format, quality) {
+  multiplier = multiplier || 2;
+  format = format || 'png';
+  quality = (quality === undefined) ? 1 : quality;
 
-  const dataURL = await readAsDataURL(file);
+  var objs = canvas.getObjects();
+  if (!objs.length) {
+    console.warn('generateMergedImage: 画布为空');
+    return null;
+  }
 
-  return new Promise((resolve) => {
-    fabric.Image.fromURL(dataURL, (img) => {
-      const cw = canvas.getWidth();
-      const ch = canvas.getHeight();
+  // 取消选中
+  canvas.discardActiveObject();
 
-      const scale = Math.min((cw * 0.8) / img.width, (ch * 0.8) / img.height, 1);
-      img.set({
-        left: cw / 2,
-        top:  ch / 2,
-        originX: 'center',
-        originY: 'center',
-        scaleX: scale,
-        scaleY: scale,
-      });
+  // ★ 关键：强制同步渲染，确保所有图层都已绘制
+  canvas.renderAll();
 
-      img.layerName = file.name || '户型图';
-      img.isPreset  = false;
+  // 计算内容包围盒
+  var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  var hasValidObj = false;
 
-      canvas.add(img);
-      canvas.sendToBack(img);
-      canvas.setActiveObject(img);
-      canvas.requestRenderAll();
+  objs.forEach(function(o) {
+    try {
+      var r = o.getBoundingRect(true, true);
+      if (r.width > 0 && r.height > 0) {
+        hasValidObj = true;
+        minX = Math.min(minX, r.left);
+        minY = Math.min(minY, r.top);
+        maxX = Math.max(maxX, r.left + r.width);
+        maxY = Math.max(maxY, r.top + r.height);
+      }
+    } catch (err) {
+      console.warn('计算对象边界失败：', err);
+    }
+  });
 
-      refreshLayers();
-      updateHint();
-      resolve();
+  if (!hasValidObj || !isFinite(minX) || !isFinite(minY) || !isFinite(maxX) || !isFinite(maxY)) {
+    console.warn('generateMergedImage: 无法计算有效边界');
+    return null;
+  }
+
+  var pad = 24;
+  minX -= pad; minY -= pad; maxX += pad; maxY += pad;
+
+  // 裁剪到画布范围内（避免负坐标）
+  minX = Math.max(0, minX);
+  minY = Math.max(0, minY);
+  maxX = Math.min(canvas.getWidth(), maxX);
+  maxY = Math.min(canvas.getHeight(), maxY);
+
+  var w = Math.ceil(maxX - minX);
+  var h = Math.ceil(maxY - minY);
+
+  if (w <= 0 || h <= 0) {
+    console.warn('generateMergedImage: 尺寸无效', w, h);
+    return null;
+  }
+
+  try {
+    var dataURL = canvas.toDataURL({
+      format: format,
+      quality: quality,
+      multiplier: multiplier,
+      left: minX,
+      top: minY,
+      width: w,
+      height: h,
     });
+
+    // 检查输出是否有效
+    if (!dataURL || typeof dataURL !== 'string' || dataURL.length < 100 || dataURL === 'data:,') {
+      console.warn('generateMergedImage: 输出为空或无效', dataURL ? dataURL.length : 'null');
+      return null;
+    }
+
+    return dataURL;
+  } catch (err) {
+    console.error('toDataURL 失败：', err);
+    return null;
+  }
+}
+
+/**
+ * 为保存到历史生成合并图：采用分步降级策略，优先保证成功
+ * 1. PNG multiplier=1（无损，适合截图）
+ * 2. JPEG multiplier=1 quality=0.85（有损，体积小）
+ * 3. JPEG multiplier=0.6 quality=0.7（进一步压缩）
+ */
+function generateMergedImageForHistory() {
+  var d = generateMergedImage(1, 'png', 1);
+  if (d) return d;
+
+  console.warn('PNG 保存失败，尝试 JPEG...');
+  d = generateMergedImage(1, 'jpeg', 0.85);
+  if (d) return d;
+
+  console.warn('JPEG 保存失败，尝试低分辨率 JPEG...');
+  d = generateMergedImage(0.6, 'jpeg', 0.7);
+  return d;
+}
+
+/* =====================================================
+   9. 历史户型图管理
+   ===================================================== */
+var HISTORY_KEY = 'huxing_history_v2';
+var MAX_HISTORY = 12;
+var currentPlanName = '户型分析';
+
+function getHistory() {
+  try {
+    return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+  } catch (e) {
+    return [];
+  }
+}
+
+function setHistory(list) {
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(list));
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+/** 获取 localStorage 使用情况（粗略估算） */
+function getStorageUsage() {
+  try {
+    var total = 0;
+    for (var key in localStorage) {
+      if (localStorage.hasOwnProperty(key)) {
+        total += (localStorage[key] || '').length;
+      }
+    }
+    // 每个字符按 2 字节估算
+    return (total * 2 / 1024 / 1024).toFixed(2);
+  } catch (e) {
+    return '?';
+  }
+}
+
+function addHistoryItem(name, dataURL, type) {
+  var history = getHistory();
+  var item = {
+    id: Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+    name: name || '未命名户型',
+    type: type || 'original',
+    dataURL: dataURL,
+    time: new Date().toISOString(),
+  };
+
+  history.unshift(item);
+
+  // 分步淘汰策略
+  var limited = history.slice(0, MAX_HISTORY);
+  while (limited.length > 0) {
+    if (setHistory(limited)) return item;
+    limited = limited.slice(0, -1);
+  }
+  return null;
+}
+
+function deleteHistoryItem(id) {
+  var list = getHistory().filter(function(h) { return h.id !== id; });
+  setHistory(list);
+}
+
+function clearHistory() {
+  localStorage.removeItem(HISTORY_KEY);
+}
+
+function renameHistoryItem(id, newName) {
+  var list = getHistory();
+  var item = list.find(function(h) { return h.id === id; });
+  if (!item) return false;
+  item.name = newName;
+  var ok = setHistory(list);
+  if (ok) {
+    canvas.getObjects().forEach(function(obj) {
+      if (obj.historyId === id) obj.layerName = newName;
+    });
+    currentPlanName = newName;
+    refreshLayers();
+  }
+  return ok;
+}
+
+/* =====================================================
+   10. 历史记录模态框
+   ===================================================== */
+var historyModal = document.getElementById('historyModal');
+var historyList  = document.getElementById('historyList');
+var historyCount = document.getElementById('historyCount');
+var storageInfo  = document.getElementById('storageInfo');
+
+function formatTime(iso) {
+  var d = new Date(iso);
+  return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) +
+         ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+}
+
+function renderHistory() {
+  var list = getHistory();
+  historyCount.textContent = '共 ' + list.length + ' 张';
+  storageInfo.textContent = '浏览器本地存储已用：约 ' + getStorageUsage() + ' MB';
+  historyList.innerHTML = '';
+
+  if (!list.length) {
+    historyList.innerHTML =
+      '<div class="history-empty">' +
+      '<span class="big">🗂️</span>' +
+      '暂无历史记录<br>上传户型图后会自动保存' +
+      '</div>';
+    return;
+  }
+
+  var grid = document.createElement('div');
+  grid.className = 'history-grid';
+
+  list.forEach(function(item) {
+    var card = document.createElement('div');
+    card.className = 'history-item';
+    card.title = '点击加载此记录';
+
+    var img = document.createElement('img');
+    img.src = item.dataURL;
+    img.alt = item.name;
+    card.appendChild(img);
+
+    var tag = document.createElement('span');
+    tag.className = 'type-tag' + (item.type === 'analyzed' ? ' analyzed' : '');
+    tag.textContent = item.type === 'analyzed' ? '分析图' : '原图';
+    card.appendChild(tag);
+
+    var info = document.createElement('div');
+    info.className = 'info';
+
+    var name = document.createElement('span');
+    name.className = 'name';
+    name.textContent = item.name;
+    name.title = item.name;
+    info.appendChild(name);
+
+    var time = document.createElement('span');
+    time.className = 'time';
+    time.textContent = formatTime(item.time);
+    info.appendChild(time);
+
+    card.appendChild(info);
+
+    var actions = document.createElement('div');
+    actions.className = 'actions';
+
+    // 下载
+    var dlBtn = document.createElement('button');
+    dlBtn.className = 'dl';
+    dlBtn.textContent = '⬇';
+    dlBtn.title = '下载此图';
+    dlBtn.onclick = function(e) {
+      e.stopPropagation();
+      var ext = item.dataURL.indexOf('image/jpeg') >= 0 ? 'jpg' : 'png';
+      var a = document.createElement('a');
+      a.href = item.dataURL;
+      a.download = sanitizeFileName(item.name) +
+                   (item.type === 'analyzed' ? '_分析图' : '_原图') +
+                   '_' + getTimestamp() + '.' + ext;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    };
+    actions.appendChild(dlBtn);
+
+    // 重命名
+    var renameBtn = document.createElement('button');
+    renameBtn.textContent = '✎';
+    renameBtn.title = '重命名';
+    renameBtn.onclick = function(e) {
+      e.stopPropagation();
+      askName(item.name, '重命名').then(function(newName) {
+        if (newName === null) return;
+        if (newName === item.name) return;
+        renameHistoryItem(item.id, newName);
+        renderHistory();
+      });
+    };
+    actions.appendChild(renameBtn);
+
+    // 删除
+    var delBtn = document.createElement('button');
+    delBtn.className = 'del';
+    delBtn.textContent = '×';
+    delBtn.title = '删除';
+    delBtn.onclick = function(e) {
+      e.stopPropagation();
+      if (!confirm('确定删除「' + item.name + '」？')) return;
+      deleteHistoryItem(item.id);
+      renderHistory();
+    };
+    actions.appendChild(delBtn);
+
+    card.appendChild(actions);
+
+    card.onclick = function() {
+      loadImageFromDataURL(item.dataURL, item.name, item.id);
+      closeHistoryModal();
+    };
+
+    grid.appendChild(card);
+  });
+
+  historyList.appendChild(grid);
+}
+
+function openHistoryModal() {
+  renderHistory();
+  historyModal.classList.add('show');
+}
+function closeHistoryModal() {
+  historyModal.classList.remove('show');
+}
+
+document.getElementById('btnHistory').onclick = openHistoryModal;
+document.getElementById('historyClose').onclick = closeHistoryModal;
+historyModal.addEventListener('click', function(e) {
+  if (e.target === historyModal) closeHistoryModal();
+});
+document.getElementById('historyClearAll').onclick = function() {
+  var list = getHistory();
+  if (!list.length) { alert('历史记录已为空'); return; }
+  if (!confirm('确定清空全部 ' + list.length + ' 条记录？此操作不可恢复。')) return;
+  clearHistory();
+  renderHistory();
+};
+
+/* =====================================================
+   11. 上传 / 加载户型图
+   ===================================================== */
+/**
+ * ★ 修复关键：移除 crossOrigin 参数
+ * 因为我们的图片源都是本地 dataURL，添加 crossOrigin 会导致画布污染
+ */
+function createImageOnCanvas(dataURL, name, historyId) {
+  historyId = historyId || null;
+  return new Promise(function(resolve, reject) {
+    try {
+      // 不传第三个参数，避免 crossOrigin 导致画布污染
+      fabric.Image.fromURL(dataURL, function(img) {
+        if (!img || !img.width || !img.height) {
+          reject(new Error('图片加载失败或尺寸无效'));
+          return;
+        }
+        var cw = canvas.getWidth();
+        var ch = canvas.getHeight();
+        var scale = Math.min((cw * 0.8) / img.width, (ch * 0.8) / img.height, 1);
+        img.set({
+          left: cw / 2, top: ch / 2,
+          originX: 'center', originY: 'center',
+          scaleX: scale, scaleY: scale,
+        });
+        img.layerName = name || '户型图';
+        img.isPreset  = false;
+        img.historyId = historyId;
+
+        canvas.add(img);
+        canvas.sendToBack(img);
+        canvas.setActiveObject(img);
+        canvas.requestRenderAll();
+        refreshLayers();
+        updateHint();
+        resolve(img);
+      });
+    } catch (err) {
+      reject(err);
+    }
   });
 }
 
-document.getElementById('fileA').addEventListener('change', async (e) => {
-  const files = Array.from(e.target.files || []);
-  for (const f of files) {
-    await addImageLayer(f);
+async function handleFileUpload(file) {
+  if (!file || !file.type || !file.type.startsWith('image/')) {
+    alert('请选择图片文件');
+    return;
   }
+
+  var defaultName = (file.name || '').replace(/\.[^.]+$/, '') || '未命名户型';
+  var name = await askName(defaultName, '命名户型图');
+  if (name === null) return;
+
+  var dataURL;
+  try {
+    dataURL = await readAsDataURL(file);
+  } catch (err) {
+    alert('读取文件失败：' + err.message);
+    return;
+  }
+
+  // 尝试保存原图到历史（失败不阻塞流程）
+  var savedOriginal = addHistoryItem(name, dataURL, 'original');
+  if (!savedOriginal) {
+    console.warn('原图体积过大，未能保存到历史。仍可正常加载到画布。');
+  }
+
+  // 加载到画布
+  try {
+    await createImageOnCanvas(dataURL, name, savedOriginal ? savedOriginal.id : null);
+    currentPlanName = name;
+  } catch (err) {
+    alert('图片加载失败：' + err.message);
+  }
+}
+
+async function loadImageFromDataURL(dataURL, name, historyId) {
+  try {
+    await createImageOnCanvas(dataURL, name, historyId);
+    currentPlanName = name;
+  } catch (err) {
+    alert('图片加载失败：' + err.message);
+  }
+}
+
+document.getElementById('fileA').addEventListener('change', function(e) {
+  var files = Array.from(e.target.files || []);
   e.target.value = '';
+
+  (async function() {
+    for (var i = 0; i < files.length; i++) {
+      try {
+        await handleFileUpload(files[i]);
+      } catch (err) {
+        console.error('上传出错：', err);
+        alert('上传出错：' + (err.message || err));
+      }
+    }
+  })();
 });
 
 /* =====================================================
-   7. 颜色调节
+   12. 颜色调节
    ===================================================== */
-const colorPicker = document.getElementById('colorPicker');
-
-colorPicker.addEventListener('input', (e) => {
+var colorPicker = document.getElementById('colorPicker');
+colorPicker.addEventListener('input', function(e) {
   currentColor = e.target.value;
-
-  const actives = canvas.getActiveObjects().filter((o) => o.isPreset);
-  const targets = actives.length
+  var actives = canvas.getActiveObjects().filter(function(o) { return o.isPreset; });
+  var targets = actives.length
     ? actives
-    : canvas.getObjects().filter((o) => o.isPreset);
-
-  targets.forEach((g) => applyPresetColor(g, currentColor));
+    : canvas.getObjects().filter(function(o) { return o.isPreset; });
+  targets.forEach(function(g) { applyPresetColor(g, currentColor); });
 });
 
 /* =====================================================
-   8. 图层面板列表
+   13. 图层面板列表
    ===================================================== */
 function refreshLayers() {
-  const objs    = canvas.getObjects().slice().reverse();
-  const actives = canvas.getActiveObjects();
-
+  var objs    = canvas.getObjects().slice().reverse();
+  var actives = canvas.getActiveObjects();
   layersEl.innerHTML = '';
 
   if (!objs.length) {
@@ -545,26 +1192,26 @@ function refreshLayers() {
     return;
   }
 
-  objs.forEach((o) => {
-    const row = document.createElement('div');
-    row.className = 'layer' + (actives.includes(o) ? ' active' : '');
+  objs.forEach(function(o) {
+    var row = document.createElement('div');
+    row.className = 'layer' + (actives.indexOf(o) >= 0 ? ' active' : '');
 
-    const icon = document.createElement('span');
+    var icon = document.createElement('span');
     icon.className = 'icon';
     icon.textContent = o.isPreset ? '▦' : '▢';
     row.appendChild(icon);
 
-    const name = document.createElement('span');
+    var name = document.createElement('span');
     name.className = 'name';
     name.textContent = o.layerName || '图层';
     name.title = o.layerName || '图层';
     row.appendChild(name);
 
-    const del = document.createElement('span');
+    var del = document.createElement('span');
     del.className = 'del';
     del.textContent = '×';
     del.title = '删除该图层';
-    del.onclick = (ev) => {
+    del.onclick = function(ev) {
       ev.stopPropagation();
       canvas.remove(o);
       canvas.discardActiveObject();
@@ -574,7 +1221,7 @@ function refreshLayers() {
     };
     row.appendChild(del);
 
-    row.onclick = () => {
+    row.onclick = function() {
       canvas.setActiveObject(o);
       canvas.requestRenderAll();
       refreshLayers();
@@ -589,32 +1236,21 @@ canvas.on('selection:updated', refreshLayers);
 canvas.on('selection:cleared', refreshLayers);
 
 /* =====================================================
-   9. 删除 / 清空
+   14. 删除选中 / 快捷键
    ===================================================== */
 function deleteSelected() {
-  const objs = canvas.getActiveObjects();
+  var objs = canvas.getActiveObjects();
   if (!objs.length) return;
-  objs.forEach((o) => canvas.remove(o));
+  objs.forEach(function(o) { canvas.remove(o); });
   canvas.discardActiveObject();
   canvas.requestRenderAll();
   refreshLayers();
   updateHint();
 }
-
 document.getElementById('btnDelete').onclick = deleteSelected;
 
-document.getElementById('btnClear').onclick = () => {
-  if (!canvas.getObjects().length) return;
-  if (!confirm('确定要清空画布吗？')) return;
-  canvas.clear();
-  canvas.backgroundColor = '#ffffff';
-  canvas.requestRenderAll();
-  refreshLayers();
-  updateHint();
-};
-
-window.addEventListener('keydown', (e) => {
-  const tag = (document.activeElement || {}).tagName;
+window.addEventListener('keydown', function(e) {
+  var tag = (document.activeElement || {}).tagName;
   if (tag === 'INPUT' || tag === 'TEXTAREA') return;
   if (e.key === 'Delete' || e.key === 'Backspace') {
     if (canvas.getActiveObjects().length) {
@@ -622,63 +1258,108 @@ window.addEventListener('keydown', (e) => {
       deleteSelected();
     }
   }
+  if (e.key === 'Escape') {
+    closeHistoryModal();
+    closeNameModal(null);
+  }
 });
 
 /* =====================================================
-   10. 保存分析图（裁剪到内容范围）
+   15. 保存到历史（保存合并图）
    ===================================================== */
-document.getElementById('btnExport').onclick = () => {
-  const objs = canvas.getObjects();
+document.getElementById('btnSaveHistory').onclick = async function() {
+  var objs = canvas.getObjects();
   if (!objs.length) {
-    alert('画布为空，请先上传户型图或添加图层');
+    alert('画布为空，请先上传户型图并添加分析图层');
     return;
   }
 
-  canvas.discardActiveObject();
-  canvas.requestRenderAll();
+  var defaultName = (currentPlanName || '户型分析') + '（分析图）';
+  var name = await askName(defaultName, '保存到历史');
+  if (name === null) return;
 
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  objs.forEach((o) => {
-    const r = o.getBoundingRect(true, true);
-    minX = Math.min(minX, r.left);
-    minY = Math.min(minY, r.top);
-    maxX = Math.max(maxX, r.left + r.width);
-    maxY = Math.max(maxY, r.top + r.height);
-  });
+  // ★ 使用分步降级策略生成合并图
+  var dataURL = generateMergedImageForHistory();
 
-  const pad = 24;
-  minX -= pad; minY -= pad; maxX += pad; maxY += pad;
-
-  const w = Math.ceil(maxX - minX);
-  const h = Math.ceil(maxY - minY);
-  if (w <= 0 || h <= 0) {
-    alert('内容尺寸异常，无法导出');
+  if (!dataURL) {
+    alert(
+      '生成合并图失败！\n\n' +
+      '可能原因：\n' +
+      '1. 图片来自跨域网址（本工具不会出现）\n' +
+      '2. 浏览器隐私模式或安全策略限制\n' +
+      '3. 画布内容异常\n\n' +
+      '建议：\n' +
+      '• 尝试刷新页面后重试\n' +
+      '• 关闭浏览器隐私模式\n' +
+      '• 用 Chrome / Edge / Safari 最新版'
+    );
     return;
   }
 
-  const dataURL = canvas.toDataURL({
-    format: 'png',
-    quality: 1,
-    multiplier: 2,
-    left: minX,
-    top: minY,
-    width: w,
-    height: h,
-  });
+  var item = addHistoryItem(name, dataURL, 'analyzed');
 
-  const a = document.createElement('a');
+  if (item) {
+    currentPlanName = name;
+    alert('✅ 已保存到历史：' + name);
+  } else {
+    alert(
+      '保存失败：浏览器本地存储空间不足。\n\n' +
+      '当前已用：约 ' + getStorageUsage() + ' MB\n\n' +
+      '建议：\n' +
+      '• 打开「历史户型图」清理部分旧记录\n' +
+      '• 或点击「下载分析图」直接下载到本地'
+    );
+  }
+};
+
+/* =====================================================
+   16. 下载分析图（合并图）
+   ===================================================== */
+document.getElementById('btnDownload').onclick = function() {
+  var objs = canvas.getObjects();
+  if (!objs.length) {
+    alert('画布为空，请先上传户型图并添加分析图层');
+    return;
+  }
+
+  // 下载用高清（multiplier=2）
+  var dataURL = generateMergedImage(2, 'png', 1);
+
+  // 如果 PNG 失败，回退到 JPEG
+  if (!dataURL) {
+    console.warn('PNG 下载失败，尝试 JPEG...');
+    dataURL = generateMergedImage(2, 'jpeg', 0.92);
+  }
+
+  if (!dataURL) {
+    alert(
+      '生成图片失败！\n\n' +
+      '建议：\n' +
+      '• 刷新页面后重试\n' +
+      '• 关闭浏览器隐私模式\n' +
+      '• 尝试换一个浏览器（Chrome / Edge / Safari）'
+    );
+    return;
+  }
+
+  var ext = dataURL.indexOf('image/jpeg') >= 0 ? 'jpg' : 'png';
+  var safeName = sanitizeFileName(currentPlanName);
+
+  var a = document.createElement('a');
   a.href = dataURL;
-  a.download = `户型分析_${Date.now()}.png`;
+  a.download = safeName + '_分析图_' + getTimestamp() + '.' + ext;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
 };
 
 /* =====================================================
-   11. 启动
+   17. 启动
    ===================================================== */
 refreshLayers();
 updateHint();
+
+})();
 </script>
 </body>
 </html>

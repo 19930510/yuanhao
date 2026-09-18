@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
-<title>户型分析</title>
+<title>户型宫格分析器</title>
 <script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
 <style>
   html, body { height: 100%; margin: 0; }
@@ -52,9 +52,10 @@
   .stage { flex: 1; position: relative; overflow: hidden; touch-action: none; }
   .stage canvas { touch-action: none; }
 
+  /* ===== 坐标导航图 - 左上角，缩小为原来的 2/3 ===== */
   .compass {
-    position: absolute; right: 24px; bottom: 24px;
-    width: 96px; height: 96px;
+    position: absolute; left: 16px; top: 16px;
+    width: 64px; height: 64px;
     pointer-events: none;
     z-index: 5;
   }
@@ -107,10 +108,23 @@
   .layer .del:hover { color: #e5484d; }
   .empty { color: #aeb6c2; font-size: 12px; padding: 6px; }
 
+  /* ===== 画布提示 ===== */
   .hint {
     position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
-    color: #b6bec9; font-size: 14px; pointer-events: none; text-align: center;
-    line-height: 2;
+    pointer-events: none; text-align: center;
+    line-height: 1.8; width: 90%; max-width: 420px;
+  }
+  .hint-main {
+    font-size: 15px; color: #8fa0b8;
+    font-weight: 500; margin-bottom: 10px;
+    letter-spacing: .3px;
+  }
+  .hint-sub {
+    font-size: 12px; color: #b6bec9;
+    line-height: 1.7;
+  }
+  .hint-sub .em {
+    color: #e5484d; font-weight: 600;
   }
 
   .modal-overlay {
@@ -265,27 +279,30 @@
   }
 
   @media (max-width: 640px) {
-    .compass { width: 78px; height: 78px; right: 16px; bottom: 16px; }
+    /* 手机端罗盘进一步缩小，保持 2/3 比例 */
+    .compass { width: 52px; height: 52px; left: 12px; top: 12px; }
     header h1 { font-size: 14px; letter-spacing: 1px; }
     .btn { padding: 6px 10px; font-size: 12px; }
     aside { width: 160px; }
     .history-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
     .history-item img { height: 90px; }
+    .hint-main { font-size: 14px; }
+    .hint-sub { font-size: 11px; }
   }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>户型分析</h1>
+  <h1>户型宫格分析器</h1>
   <label class="btn">
     ＋ 上传户型图
     <input type="file" id="fileA" accept="image/*" multiple>
   </label>
   <button class="btn" id="btnHistory">📂 历史户型图</button>
   <span class="divider"></span>
-  <button class="btn" id="btnJiugong">＋ 九宫网格</button>
-  <button class="btn" id="btnErshisi">＋ 二十四山</button>
+  <button class="btn" id="btnJiugong">＋ 九宫</button>
+  <button class="btn" id="btnErshisi">＋ 二十四宫</button>
   <span class="divider"></span>
   <label class="color-field">
     显示颜色
@@ -300,6 +317,8 @@
 <main>
   <div class="stage" id="stage">
     <canvas id="c"></canvas>
+
+    <!-- 坐标导航图 - 左上角 -->
     <div class="compass" title="方向指示（东、南、西、北）">
       <svg viewBox="0 0 100 100" width="100%" height="100%">
         <defs>
@@ -326,7 +345,17 @@
               font-family='"PingFang SC","Microsoft YaHei",sans-serif'>西</text>
       </svg>
     </div>
-    <div class="hint" id="hint">请先上传户型图，或添加内置图层</div>
+
+    <!-- ===== 画布提示 ===== -->
+    <div class="hint" id="hint">
+      <div class="hint-main">
+        上传户型图 → 添加九宫 / 二十四宫 → 拖动调整 → 保存或下载
+      </div>
+      <div class="hint-sub">
+        支持 JPG、PNG、WebP 等常见格式<br>
+        单张图片不超过 <span class="em">10 MB</span>
+      </div>
+    </div>
   </div>
 
   <aside id="layerPanel">
@@ -387,7 +416,12 @@ if (typeof fabric === 'undefined') {
 'use strict';
 
 /* =====================================================
-   1. 初始化画布
+   1. 全局配置
+   ===================================================== */
+var MAX_FILE_SIZE = 10 * 1024 * 1024;  // 10 MB 上限
+
+/* =====================================================
+   2. 初始化画布
    ===================================================== */
 var stageEl  = document.getElementById('stage');
 var hintEl   = document.getElementById('hint');
@@ -422,7 +456,7 @@ window.addEventListener('resize', resizeStage);
 resizeStage();
 
 /* =====================================================
-   2. 图层面板折叠
+   3. 图层面板折叠
    ===================================================== */
 var layerPanel = document.getElementById('layerPanel');
 var toggleLayerBtn = document.getElementById('toggleLayerBtn');
@@ -436,7 +470,7 @@ toggleLayerBtn.addEventListener('click', function(e) {
 });
 
 /* =====================================================
-   3. 命名输入模态框
+   4. 命名输入模态框
    ===================================================== */
 var nameModal      = document.getElementById('nameModal');
 var nameInput      = document.getElementById('nameInput');
@@ -488,7 +522,7 @@ nameModal.addEventListener('click', function(e) {
 });
 
 /* =====================================================
-   4. 双指手势
+   5. 双指手势
    ===================================================== */
 var touchGesture = null;
 
@@ -569,7 +603,7 @@ stageEl.addEventListener('touchcancel', onGestureEnd,   { capture: true, passive
 stageEl.addEventListener('gesturestart', function(e) { e.preventDefault(); });
 
 /* =====================================================
-   5. 预设图层文字保持正向
+   6. 预设图层文字保持正向
    ===================================================== */
 function updateTextOrientations(group) {
   if (!group || !group.isPreset) return;
@@ -594,11 +628,11 @@ canvas.on('object:scaling', function(e) {
 });
 
 /* =====================================================
-   6. 内置图层
+   7. 内置图层（名称已更新）
    ===================================================== */
 var PRESETS = {
   jiugong: {
-    name: '九宫网格',
+    name: '九宫',
     cols: 3,
     labels: [
       ['巽', '离', '坤'],
@@ -607,7 +641,7 @@ var PRESETS = {
     ],
   },
   ershisi: {
-    name: '二十四山',
+    name: '二十四宫',
     cols: 7,
     labels: [
       ['巽', '巳', '丙', '午', '丁', '未', '坤'],
@@ -695,7 +729,7 @@ document.getElementById('btnJiugong').onclick  = function() { addPresetLayer('ji
 document.getElementById('btnErshisi').onclick  = function() { addPresetLayer('ershisi'); };
 
 /* =====================================================
-   7. 工具函数
+   8. 工具函数
    ===================================================== */
 function readAsDataURL(file) {
   return new Promise(function(resolve, reject) {
@@ -722,14 +756,14 @@ function getTimestamp() {
          '_' + pad2(ts.getHours()) + pad2(ts.getMinutes()) + pad2(ts.getSeconds());
 }
 
+function formatFileSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / 1024 / 1024).toFixed(2) + ' MB';
+}
+
 /* =====================================================
-   8. ★★★ 生成合并图（核心，已修复）★★★
-   =====================================================
-   修复要点：
-   1. 使用 canvas.renderAll() 同步渲染，确保画布已刷新
-   2. 加 try/catch 捕获 toDataURL 错误
-   3. 检查返回值是否有效（避免空 dataURL）
-   4. 支持 PNG / JPEG 格式切换（JPEG 体积更小）
+   9. 生成合并图
    ===================================================== */
 function generateMergedImage(multiplier, format, quality) {
   multiplier = multiplier || 2;
@@ -737,18 +771,11 @@ function generateMergedImage(multiplier, format, quality) {
   quality = (quality === undefined) ? 1 : quality;
 
   var objs = canvas.getObjects();
-  if (!objs.length) {
-    console.warn('generateMergedImage: 画布为空');
-    return null;
-  }
+  if (!objs.length) return null;
 
-  // 取消选中
   canvas.discardActiveObject();
-
-  // ★ 关键：强制同步渲染，确保所有图层都已绘制
   canvas.renderAll();
 
-  // 计算内容包围盒
   var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   var hasValidObj = false;
 
@@ -768,14 +795,12 @@ function generateMergedImage(multiplier, format, quality) {
   });
 
   if (!hasValidObj || !isFinite(minX) || !isFinite(minY) || !isFinite(maxX) || !isFinite(maxY)) {
-    console.warn('generateMergedImage: 无法计算有效边界');
     return null;
   }
 
   var pad = 24;
   minX -= pad; minY -= pad; maxX += pad; maxY += pad;
 
-  // 裁剪到画布范围内（避免负坐标）
   minX = Math.max(0, minX);
   minY = Math.max(0, minY);
   maxX = Math.min(canvas.getWidth(), maxX);
@@ -784,10 +809,7 @@ function generateMergedImage(multiplier, format, quality) {
   var w = Math.ceil(maxX - minX);
   var h = Math.ceil(maxY - minY);
 
-  if (w <= 0 || h <= 0) {
-    console.warn('generateMergedImage: 尺寸无效', w, h);
-    return null;
-  }
+  if (w <= 0 || h <= 0) return null;
 
   try {
     var dataURL = canvas.toDataURL({
@@ -800,9 +822,7 @@ function generateMergedImage(multiplier, format, quality) {
       height: h,
     });
 
-    // 检查输出是否有效
     if (!dataURL || typeof dataURL !== 'string' || dataURL.length < 100 || dataURL === 'data:,') {
-      console.warn('generateMergedImage: 输出为空或无效', dataURL ? dataURL.length : 'null');
       return null;
     }
 
@@ -813,31 +833,23 @@ function generateMergedImage(multiplier, format, quality) {
   }
 }
 
-/**
- * 为保存到历史生成合并图：采用分步降级策略，优先保证成功
- * 1. PNG multiplier=1（无损，适合截图）
- * 2. JPEG multiplier=1 quality=0.85（有损，体积小）
- * 3. JPEG multiplier=0.6 quality=0.7（进一步压缩）
- */
 function generateMergedImageForHistory() {
   var d = generateMergedImage(1, 'png', 1);
   if (d) return d;
-
   console.warn('PNG 保存失败，尝试 JPEG...');
   d = generateMergedImage(1, 'jpeg', 0.85);
   if (d) return d;
-
   console.warn('JPEG 保存失败，尝试低分辨率 JPEG...');
   d = generateMergedImage(0.6, 'jpeg', 0.7);
   return d;
 }
 
 /* =====================================================
-   9. 历史户型图管理
+   10. 历史户型图管理
    ===================================================== */
 var HISTORY_KEY = 'huxing_history_v2';
 var MAX_HISTORY = 12;
-var currentPlanName = '户型分析';
+var currentPlanName = '户型宫格分析';
 
 function getHistory() {
   try {
@@ -856,7 +868,6 @@ function setHistory(list) {
   }
 }
 
-/** 获取 localStorage 使用情况（粗略估算） */
 function getStorageUsage() {
   try {
     var total = 0;
@@ -865,7 +876,6 @@ function getStorageUsage() {
         total += (localStorage[key] || '').length;
       }
     }
-    // 每个字符按 2 字节估算
     return (total * 2 / 1024 / 1024).toFixed(2);
   } catch (e) {
     return '?';
@@ -884,7 +894,6 @@ function addHistoryItem(name, dataURL, type) {
 
   history.unshift(item);
 
-  // 分步淘汰策略
   var limited = history.slice(0, MAX_HISTORY);
   while (limited.length > 0) {
     if (setHistory(limited)) return item;
@@ -919,7 +928,7 @@ function renameHistoryItem(id, newName) {
 }
 
 /* =====================================================
-   10. 历史记录模态框
+   11. 历史记录模态框
    ===================================================== */
 var historyModal = document.getElementById('historyModal');
 var historyList  = document.getElementById('historyList');
@@ -984,7 +993,6 @@ function renderHistory() {
     var actions = document.createElement('div');
     actions.className = 'actions';
 
-    // 下载
     var dlBtn = document.createElement('button');
     dlBtn.className = 'dl';
     dlBtn.textContent = '⬇';
@@ -1003,7 +1011,6 @@ function renderHistory() {
     };
     actions.appendChild(dlBtn);
 
-    // 重命名
     var renameBtn = document.createElement('button');
     renameBtn.textContent = '✎';
     renameBtn.title = '重命名';
@@ -1018,7 +1025,6 @@ function renderHistory() {
     };
     actions.appendChild(renameBtn);
 
-    // 删除
     var delBtn = document.createElement('button');
     delBtn.className = 'del';
     delBtn.textContent = '×';
@@ -1066,17 +1072,12 @@ document.getElementById('historyClearAll').onclick = function() {
 };
 
 /* =====================================================
-   11. 上传 / 加载户型图
+   12. 上传 / 加载户型图（含 10MB 限制）
    ===================================================== */
-/**
- * ★ 修复关键：移除 crossOrigin 参数
- * 因为我们的图片源都是本地 dataURL，添加 crossOrigin 会导致画布污染
- */
 function createImageOnCanvas(dataURL, name, historyId) {
   historyId = historyId || null;
   return new Promise(function(resolve, reject) {
     try {
-      // 不传第三个参数，避免 crossOrigin 导致画布污染
       fabric.Image.fromURL(dataURL, function(img) {
         if (!img || !img.width || !img.height) {
           reject(new Error('图片加载失败或尺寸无效'));
@@ -1109,15 +1110,32 @@ function createImageOnCanvas(dataURL, name, historyId) {
 }
 
 async function handleFileUpload(file) {
+  // 1. 检查类型
   if (!file || !file.type || !file.type.startsWith('image/')) {
-    alert('请选择图片文件');
+    alert('请选择图片文件（JPG、PNG、WebP 等格式）');
     return;
   }
 
+  // 2. ★ 检查文件大小（10MB 限制）
+  if (file.size > MAX_FILE_SIZE) {
+    alert(
+      '图片过大，无法上传！\n\n' +
+      '当前图片：' + formatFileSize(file.size) + '\n' +
+      '最大限制：10 MB\n\n' +
+      '建议：\n' +
+      '• 用手机相册自带的"压缩"功能处理\n' +
+      '• 或使用在线图片压缩工具\n' +
+      '• 或裁剪后重新上传'
+    );
+    return;
+  }
+
+  // 3. 命名
   var defaultName = (file.name || '').replace(/\.[^.]+$/, '') || '未命名户型';
   var name = await askName(defaultName, '命名户型图');
   if (name === null) return;
 
+  // 4. 读取
   var dataURL;
   try {
     dataURL = await readAsDataURL(file);
@@ -1126,13 +1144,13 @@ async function handleFileUpload(file) {
     return;
   }
 
-  // 尝试保存原图到历史（失败不阻塞流程）
+  // 5. 保存原图到历史
   var savedOriginal = addHistoryItem(name, dataURL, 'original');
   if (!savedOriginal) {
     console.warn('原图体积过大，未能保存到历史。仍可正常加载到画布。');
   }
 
-  // 加载到画布
+  // 6. 加载到画布
   try {
     await createImageOnCanvas(dataURL, name, savedOriginal ? savedOriginal.id : null);
     currentPlanName = name;
@@ -1167,7 +1185,7 @@ document.getElementById('fileA').addEventListener('change', function(e) {
 });
 
 /* =====================================================
-   12. 颜色调节
+   13. 颜色调节
    ===================================================== */
 var colorPicker = document.getElementById('colorPicker');
 colorPicker.addEventListener('input', function(e) {
@@ -1180,7 +1198,7 @@ colorPicker.addEventListener('input', function(e) {
 });
 
 /* =====================================================
-   13. 图层面板列表
+   14. 图层面板列表
    ===================================================== */
 function refreshLayers() {
   var objs    = canvas.getObjects().slice().reverse();
@@ -1236,7 +1254,7 @@ canvas.on('selection:updated', refreshLayers);
 canvas.on('selection:cleared', refreshLayers);
 
 /* =====================================================
-   14. 删除选中 / 快捷键
+   15. 删除选中 / 快捷键
    ===================================================== */
 function deleteSelected() {
   var objs = canvas.getActiveObjects();
@@ -1265,7 +1283,7 @@ window.addEventListener('keydown', function(e) {
 });
 
 /* =====================================================
-   15. 保存到历史（保存合并图）
+   16. 保存到历史
    ===================================================== */
 document.getElementById('btnSaveHistory').onclick = async function() {
   var objs = canvas.getObjects();
@@ -1274,20 +1292,18 @@ document.getElementById('btnSaveHistory').onclick = async function() {
     return;
   }
 
-  var defaultName = (currentPlanName || '户型分析') + '（分析图）';
+  var defaultName = (currentPlanName || '户型宫格分析') + '（分析图）';
   var name = await askName(defaultName, '保存到历史');
   if (name === null) return;
 
-  // ★ 使用分步降级策略生成合并图
   var dataURL = generateMergedImageForHistory();
 
   if (!dataURL) {
     alert(
       '生成合并图失败！\n\n' +
       '可能原因：\n' +
-      '1. 图片来自跨域网址（本工具不会出现）\n' +
-      '2. 浏览器隐私模式或安全策略限制\n' +
-      '3. 画布内容异常\n\n' +
+      '1. 浏览器隐私模式或安全策略限制\n' +
+      '2. 画布内容异常\n\n' +
       '建议：\n' +
       '• 尝试刷新页面后重试\n' +
       '• 关闭浏览器隐私模式\n' +
@@ -1313,7 +1329,7 @@ document.getElementById('btnSaveHistory').onclick = async function() {
 };
 
 /* =====================================================
-   16. 下载分析图（合并图）
+   17. 下载分析图
    ===================================================== */
 document.getElementById('btnDownload').onclick = function() {
   var objs = canvas.getObjects();
@@ -1322,10 +1338,8 @@ document.getElementById('btnDownload').onclick = function() {
     return;
   }
 
-  // 下载用高清（multiplier=2）
   var dataURL = generateMergedImage(2, 'png', 1);
 
-  // 如果 PNG 失败，回退到 JPEG
   if (!dataURL) {
     console.warn('PNG 下载失败，尝试 JPEG...');
     dataURL = generateMergedImage(2, 'jpeg', 0.92);
@@ -1354,7 +1368,7 @@ document.getElementById('btnDownload').onclick = function() {
 };
 
 /* =====================================================
-   17. 启动
+   18. 启动
    ===================================================== */
 refreshLayers();
 updateHint();

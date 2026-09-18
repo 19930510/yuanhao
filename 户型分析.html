@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>户型分析</title>
+<script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
+<style>
+  html, body { height: 100%; margin: 0; }
+  * { box-sizing: border-box; }
+  body {
+    display: flex; flex-direction: column; overflow: hidden;
+    font: 14px/1.5 -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #eef1f6; color: #333;
+  }
+  header {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    padding: 10px 16px; background: #fff; border-bottom: 1px solid #e3e6eb;
+    box-shadow: 0 1px 3px rgba(0,0,0,.04); z-index: 10;
+  }
+  header h1 {
+    font-size: 16px; margin: 0 14px 0 0; font-weight: 700;
+    letter-spacing: 2px; color: #1f2a44;
+  }
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+    padding: 7px 14px; border-radius: 6px; border: 1px solid #d5dae2;
+    background: #fff; color: #333; cursor: pointer; font-size: 13px;
+    transition: .15s; user-select: none; line-height: 1.4;
+  }
+  .btn:hover { border-color: #2f80ed; color: #2f80ed; background: #f7faff; }
+  .btn.primary { background: #2f80ed; border-color: #2f80ed; color: #fff; }
+  .btn.primary:hover { background: #1c6fdc; color: #fff; }
+  .btn input[type=file] { display: none; }
+  .divider { width: 1px; height: 22px; background: #e3e6eb; margin: 0 4px; }
+  .spacer { flex: 1; }
+
+  .color-field {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 3px 10px 3px 12px; border: 1px solid #d5dae2;
+    border-radius: 6px; background: #fff; font-size: 13px; color: #556;
+  }
+  .color-field input[type=color] {
+    width: 30px; height: 24px; border: none; background: none; padding: 0;
+    cursor: pointer;
+  }
+
+  main { flex: 1; display: flex; min-height: 0; }
+  .stage { flex: 1; position: relative; overflow: hidden; }
+  
+  /* 方向坐标图 - 悬浮于画布右下角 */
+  .compass {
+    position: absolute; right: 24px; bottom: 24px;
+    width: 96px; height: 96px;
+    pointer-events: none; /* 不拦截鼠标事件，确保画布操作不受影响 */
+    z-index: 5;
+  }
+
+  .hint {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
+    color: #b6bec9; font-size: 14px; pointer-events: none; text-align: center;
+    line-height: 2;
+  }
+  aside {
+    width: 210px; background: #fff; border-left: 1px solid #e3e6eb;
+    display: flex; flex-direction: column; min-height: 0;
+  }
+  aside h2 {
+    font-size: 12px; color: #8a94a6; margin: 0;
+    padding: 12px 14px 8px; font-weight: 600; letter-spacing: .5px;
+  }
+  #layers { flex: 1; overflow: auto; padding: 0 8px 8px; }
+  .layer {
+    display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+    border-radius: 6px; cursor: pointer; font-size: 13px;
+    margin-bottom: 4px; border: 1px solid transparent;
+  }
+  .layer:hover { background: #f5f7fa; }
+  .layer.active { background: #eaf2fe; border-color: #b9d4fb; color: #1c6fdc; }
+  .layer .icon { font-size: 12px; color: #9aa4b2; }
+  .layer.active .icon { color: #1c6fdc; }
+  .layer .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .layer .del { color: #b0b8c4; font-size: 16px; line-height: 1; padding: 0 2px; }
+  .layer .del:hover { color: #e5484d; }
+  .empty { color: #aeb6c2; font-size: 12px; padding: 6px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>户型分析</h1>
+
+  <label class="btn">
+    ＋ 上传户型图
+    <input type="file" id="fileA" accept="image/*" multiple>
+  </label>
+
+  <span class="divider"></span>
+
+  <button class="btn" id="btnJiugong">＋ 九宫网格</button>
+  <button class="btn" id="btnErshisi">＋ 二十四山</button>
+
+  <span class="divider"></span>
+
+  <label class="color-field">
+    文字颜色
+    <input type="color" id="colorPicker" value="#1a7f7a">
+  </label>
+
+  <button class="btn" id="btnDelete">删除选中</button>
+  <button class="btn" id="btnClear">清空</button>
+
+  <span class="spacer"></span>
+  <button class="btn primary" id="btnExport">保存分析图</button>
+</header>
+
+<main>
+  <div class="stage" id="stage">
+    <canvas id="c"></canvas>
+    
+    <!-- 方向坐标图（“北”字在上，红色箭头在下） -->
+    <div class="compass" title="方向指示（东、南、西、北）">
+      <svg viewBox="0 0 100 100" width="100%" height="100%">
+        <defs>
+          <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="1" stdDeviation="1.5" flood-color="#000" flood-opacity="0.12"/>
+          </filter>
+        </defs>
+
+        <!-- 外圈底盘 -->
+        <circle cx="50" cy="50" r="46" fill="rgba(255,255,255,0.92)"
+                stroke="#d5dae2" stroke-width="1.5" filter="url(#shadow)"/>
+
+        <!-- 十字辅助线（只保留下半与水平方向，避免穿过顶部文字和箭头） -->
+        <path d="M50,50 L50,80 M20,50 L80,50"
+              stroke="#eef1f6" stroke-width="1.5" stroke-linecap="round"/>
+
+        <!-- “北”字：位于顶部，红色加粗 -->
+        <text x="50" y="20" text-anchor="middle" dominant-baseline="middle"
+              font-size="14" fill="#e5484d" font-weight="bold"
+              font-family='"PingFang SC","Microsoft YaHei",sans-serif'>北</text>
+
+        <!-- 北向红色箭头：位于“北”字正下方，指向上方 -->
+        <polygon points="50,32 44,44 56,44" fill="#e5484d"/>
+
+        <!-- 其他方向文字 -->
+        <text x="50" y="86" text-anchor="middle" dominant-baseline="middle"
+              font-size="13" fill="#6b7280"
+              font-family='"PingFang SC","Microsoft YaHei",sans-serif'>南</text>
+        <text x="86" y="50" text-anchor="middle" dominant-baseline="middle"
+              font-size="13" fill="#6b7280"
+              font-family='"PingFang SC","Microsoft YaHei",sans-serif'>东</text>
+        <text x="14" y="50" text-anchor="middle" dominant-baseline="middle"
+              font-size="13" fill="#6b7280"
+              font-family='"PingFang SC","Microsoft YaHei",sans-serif'>西</text>
+      </svg>
+    </div>
+
+    <div class="hint" id="hint">
+      请先上传户型图，或添加内置图层
+    </div>
+  </div>
+  <aside>
+    <h2>图层</h2>
+    <div id="layers"></div>
+  </aside>
+</main>
+
+<script>
+/* =====================================================
+   1. 初始化画布
+   ===================================================== */
+const stageEl  = document.getElementById('stage');
+const hintEl   = document.getElementById('hint');
+const layersEl = document.getElementById('layers');
+
+const canvas = new fabric.Canvas('c', {
+  backgroundColor: '#ffffff',
+  preserveObjectStacking: true,
+  uniScaleTransform: true,   // 角点拖拽默认等比缩放
+  selection: false,          // 关闭框选
+});
+
+fabric.Object.prototype.set({
+  borderColor: '#2f80ed',
+  borderScaleFactor: 1.5,
+  cornerColor: '#2f80ed',
+  cornerStrokeColor: '#ffffff',
+  cornerStyle: 'circle',
+  cornerSize: 12,
+  transparentCorners: false,
+});
+
+function resizeStage() {
+  canvas.setDimensions({
+    width:  stageEl.clientWidth  || 800,
+    height: stageEl.clientHeight || 600,
+  });
+  canvas.requestRenderAll();
+}
+window.addEventListener('resize', resizeStage);
+resizeStage();
+
+/* =====================================================
+   2. 内置图层（矢量绘制，天然透明底）
+   ===================================================== */
+const PRESETS = {
+  jiugong: {
+    name: '九宫网格',
+    cols: 3,
+    labels: [
+      ['巽', '离', '坤'],
+      ['震', '',  '兑'],
+      ['艮', '坎', '乾'],
+    ],
+  },
+  ershisi: {
+    name: '二十四山',
+    cols: 7,
+    labels: [
+      ['巽', '巳', '丙', '午', '丁', '未', '坤'],
+      ['辰', '',  '',  '',  '',  '',  '申'],
+      ['乙', '',  '',  '',  '',  '',  '庚'],
+      ['卯', '',  '',  '',  '',  '',  '酉'],
+      ['甲', '',  '',  '',  '',  '',  '辛'],
+      ['寅', '',  '',  '',  '',  '',  '戌'],
+      ['艮', '丑', '癸', '子', '壬', '亥', '乾'],
+    ],
+  },
+};
+
+let currentColor = '#1a7f7a';
+
+/**
+ * 创建内置矢量图层（Group）
+ */
+function createPresetGroup(key, color) {
+  const p    = PRESETS[key];
+  const cols = p.cols;
+  const size = Math.min(canvas.getWidth(), canvas.getHeight()) * 0.8;
+  const cell = size / cols;
+  const lineW = Math.max(1.4, cell * 0.022);
+  const items = [];
+
+  // 网格线
+  for (let i = 0; i <= cols; i++) {
+    items.push(new fabric.Line([i * cell, 0, i * cell, size], {
+      stroke: color, strokeWidth: lineW,
+    }));
+    items.push(new fabric.Line([0, i * cell, size, i * cell], {
+      stroke: color, strokeWidth: lineW,
+    }));
+  }
+
+  // 文字
+  p.labels.forEach((row, r) => {
+    row.forEach((ch, c) => {
+      if (!ch) return;
+      items.push(new fabric.Text(ch, {
+        left: c * cell + cell / 2,
+        top:  r * cell + cell / 2,
+        originX: 'center',
+        originY: 'center',
+        fontSize: cell * 0.66,
+        fontFamily: '"KaiTi","STKaiti","Kaiti SC","楷体","Songti SC",serif',
+        fontWeight: 'bold',
+        fill: color,
+      }));
+    });
+  });
+
+  const g = new fabric.Group(items, {
+    left: canvas.getWidth() / 2,
+    top:  canvas.getHeight() / 2,
+    originX: 'center',
+    originY: 'center',
+    objectCaching: false,
+    subTargetCheck: false,
+  });
+
+  g.layerName = p.name;
+  g.isPreset  = true;
+  g.presetKey = key;
+
+  return g;
+}
+
+/** 修改内置图层颜色（文字 + 网格线） */
+function applyPresetColor(group, color) {
+  group.getObjects().forEach((o) => {
+    if (o.type === 'text')      o.set('fill', color);
+    else if (o.type === 'line') o.set('stroke', color);
+    o.dirty = true;
+  });
+  group.dirty = true;
+  canvas.requestRenderAll();
+}
+
+function addPresetLayer(key) {
+  const g = createPresetGroup(key, currentColor);
+  canvas.add(g);
+  canvas.bringToFront(g);
+  canvas.setActiveObject(g);
+  canvas.requestRenderAll();
+  refreshLayers();
+  updateHint();
+}
+
+document.getElementById('btnJiugong').onclick  = () => addPresetLayer('jiugong');
+document.getElementById('btnErshisi').onclick  = () => addPresetLayer('ershisi');
+
+/* =====================================================
+   3. 工具函数
+   ===================================================== */
+function readAsDataURL(file) {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload  = () => resolve(fr.result);
+    fr.onerror = reject;
+    fr.readAsDataURL(file);
+  });
+}
+
+function updateHint() {
+  hintEl.style.display = canvas.getObjects().length ? 'none' : 'block';
+}
+
+/* =====================================================
+   4. 上传户型图（始终置于最底层）
+   ===================================================== */
+async function addImageLayer(file) {
+  if (!file || !file.type.startsWith('image/')) return;
+
+  const dataURL = await readAsDataURL(file);
+
+  return new Promise((resolve) => {
+    fabric.Image.fromURL(dataURL, (img) => {
+      const cw = canvas.getWidth();
+      const ch = canvas.getHeight();
+
+      const scale = Math.min((cw * 0.8) / img.width, (ch * 0.8) / img.height, 1);
+      img.set({
+        left: cw / 2,
+        top:  ch / 2,
+        originX: 'center',
+        originY: 'center',
+        scaleX: scale,
+        scaleY: scale,
+      });
+
+      img.layerName = file.name || '户型图';
+      img.isPreset  = false;
+
+      canvas.add(img);
+      canvas.sendToBack(img);   // 户型图永远在最底层
+      canvas.setActiveObject(img);
+      canvas.requestRenderAll();
+
+      refreshLayers();
+      updateHint();
+      resolve();
+    });
+  });
+}
+
+document.getElementById('fileA').addEventListener('change', async (e) => {
+  const files = Array.from(e.target.files || []);
+  for (const f of files) {
+    await addImageLayer(f);
+  }
+  e.target.value = '';
+});
+
+/* =====================================================
+   5. 颜色调节
+   ===================================================== */
+const colorPicker = document.getElementById('colorPicker');
+
+colorPicker.addEventListener('input', (e) => {
+  currentColor = e.target.value;
+
+  const actives = canvas.getActiveObjects().filter((o) => o.isPreset);
+  const targets = actives.length
+    ? actives
+    : canvas.getObjects().filter((o) => o.isPreset);
+
+  targets.forEach((g) => applyPresetColor(g, currentColor));
+});
+
+/* =====================================================
+   6. 图层面板
+   ===================================================== */
+function refreshLayers() {
+  const objs    = canvas.getObjects().slice().reverse(); // 顶层排最前
+  const actives = canvas.getActiveObjects();
+
+  layersEl.innerHTML = '';
+
+  if (!objs.length) {
+    layersEl.innerHTML = '<div class="empty">暂无图层</div>';
+    return;
+  }
+
+  objs.forEach((o) => {
+    const row = document.createElement('div');
+    row.className = 'layer' + (actives.includes(o) ? ' active' : '');
+
+    const icon = document.createElement('span');
+    icon.className = 'icon';
+    icon.textContent = o.isPreset ? '▦' : '▢';
+    row.appendChild(icon);
+
+    const name = document.createElement('span');
+    name.className = 'name';
+    name.textContent = o.layerName || '图层';
+    name.title = o.layerName || '图层';
+    row.appendChild(name);
+
+    const del = document.createElement('span');
+    del.className = 'del';
+    del.textContent = '×';
+    del.title = '删除该图层';
+    del.onclick = (ev) => {
+      ev.stopPropagation();
+      canvas.remove(o);
+      canvas.discardActiveObject();
+      canvas.requestRenderAll();
+      refreshLayers();
+      updateHint();
+    };
+    row.appendChild(del);
+
+    row.onclick = () => {
+      canvas.setActiveObject(o);
+      canvas.requestRenderAll();
+      refreshLayers();
+    };
+
+    layersEl.appendChild(row);
+  });
+}
+
+canvas.on('selection:created', refreshLayers);
+canvas.on('selection:updated', refreshLayers);
+canvas.on('selection:cleared', refreshLayers);
+
+/* =====================================================
+   7. 删除 / 清空
+   ===================================================== */
+function deleteSelected() {
+  const objs = canvas.getActiveObjects();
+  if (!objs.length) return;
+  objs.forEach((o) => canvas.remove(o));
+  canvas.discardActiveObject();
+  canvas.requestRenderAll();
+  refreshLayers();
+  updateHint();
+}
+
+document.getElementById('btnDelete').onclick = deleteSelected;
+
+document.getElementById('btnClear').onclick = () => {
+  if (!canvas.getObjects().length) return;
+  if (!confirm('确定要清空画布吗？')) return;
+  canvas.clear();
+  canvas.backgroundColor = '#ffffff';
+  canvas.requestRenderAll();
+  refreshLayers();
+  updateHint();
+};
+
+window.addEventListener('keydown', (e) => {
+  const tag = (document.activeElement || {}).tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+  if (e.key === 'Delete' || e.key === 'Backspace') {
+    if (canvas.getActiveObjects().length) {
+      e.preventDefault();
+      deleteSelected();
+    }
+  }
+});
+
+/* =====================================================
+   8. 保存分析图（裁剪到内容范围）
+   ===================================================== */
+document.getElementById('btnExport').onclick = () => {
+  const objs = canvas.getObjects();
+  if (!objs.length) {
+    alert('画布为空，请先上传户型图或添加图层');
+    return;
+  }
+
+  // 取消选中，避免把控制点画进去
+  canvas.discardActiveObject();
+  canvas.requestRenderAll();
+
+  // 计算内容包围盒
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  objs.forEach((o) => {
+    const r = o.getBoundingRect(true, true);
+    minX = Math.min(minX, r.left);
+    minY = Math.min(minY, r.top);
+    maxX = Math.max(maxX, r.left + r.width);
+    maxY = Math.max(maxY, r.top + r.height);
+  });
+
+  const pad = 24;
+  minX -= pad; minY -= pad; maxX += pad; maxY += pad;
+
+  const w = Math.ceil(maxX - minX);
+  const h = Math.ceil(maxY - minY);
+  if (w <= 0 || h <= 0) {
+    alert('内容尺寸异常，无法导出');
+    return;
+  }
+
+  const dataURL = canvas.toDataURL({
+    format: 'png',
+    quality: 1,
+    multiplier: 2,          // 2 倍分辨率，更清晰
+    left: minX,
+    top: minY,
+    width: w,
+    height: h,
+  });
+
+  const a = document.createElement('a');
+  a.href = dataURL;
+  a.download = `户型分析_${Date.now()}.png`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+};
+
+/* =====================================================
+   9. 启动
+   ===================================================== */
+refreshLayers();
+updateHint();
+</script>
+</body>
+</html>

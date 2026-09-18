@@ -34,6 +34,10 @@
   .btn.primary:hover { background: #1c6fdc; color: #fff; }
   .btn.success { background: #10b981; border-color: #10b981; color: #fff; }
   .btn.success:hover { background: #059669; border-color: #059669; color: #fff; }
+  .btn.warn { background: #f59e0b; border-color: #f59e0b; color: #fff; }
+  .btn.warn:hover { background: #d97706; border-color: #d97706; color: #fff; }
+  .btn.info { background: #6366f1; border-color: #6366f1; color: #fff; }
+  .btn.info:hover { background: #4f46e5; border-color: #4f46e5; color: #fff; }
   .btn input[type=file] { display: none; }
   .divider { width: 1px; height: 22px; background: #e3e6eb; margin: 0 4px; }
   .spacer { flex: 1; }
@@ -48,11 +52,40 @@
     cursor: pointer;
   }
 
+  .opacity-field {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 3px 12px; border: 1px solid #d5dae2;
+    border-radius: 6px; background: #fff; font-size: 13px; color: #556;
+    user-select: none;
+  }
+  .opacity-field input[type=range] {
+    -webkit-appearance: none; appearance: none;
+    width: 90px; height: 4px;
+    background: linear-gradient(to right, #2f80ed 0%, #2f80ed 100%);
+    border-radius: 3px; outline: none; cursor: pointer;
+  }
+  .opacity-field input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 15px; height: 15px; border-radius: 50%;
+    background: #fff; border: 2px solid #2f80ed;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  }
+  .opacity-field input[type=range]::-moz-range-thumb {
+    width: 15px; height: 15px; border-radius: 50%;
+    background: #fff; border: 2px solid #2f80ed;
+    cursor: pointer;
+  }
+  .opacity-value {
+    min-width: 36px; text-align: right;
+    font-variant-numeric: tabular-nums;
+    color: #2f80ed; font-weight: 600;
+  }
+
   main { flex: 1; display: flex; min-height: 0; }
   .stage { flex: 1; position: relative; overflow: hidden; touch-action: none; }
   .stage canvas { touch-action: none; }
 
-  /* ===== 坐标导航图 - 左上角，缩小为原来的 2/3 ===== */
   .compass {
     position: absolute; left: 16px; top: 16px;
     width: 64px; height: 64px;
@@ -108,7 +141,6 @@
   .layer .del:hover { color: #e5484d; }
   .empty { color: #aeb6c2; font-size: 12px; padding: 6px; }
 
-  /* ===== 画布提示 ===== */
   .hint {
     position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
     pointer-events: none; text-align: center;
@@ -278,8 +310,11 @@
     margin-top: 4px;
   }
 
+  @media (max-width: 900px) {
+    .opacity-field input[type=range] { width: 60px; }
+  }
+
   @media (max-width: 640px) {
-    /* 手机端罗盘进一步缩小，保持 2/3 比例 */
     .compass { width: 52px; height: 52px; left: 12px; top: 12px; }
     header h1 { font-size: 14px; letter-spacing: 1px; }
     .btn { padding: 6px 10px; font-size: 12px; }
@@ -288,6 +323,8 @@
     .history-item img { height: 90px; }
     .hint-main { font-size: 14px; }
     .hint-sub { font-size: 11px; }
+    .opacity-field { padding: 3px 8px; font-size: 12px; }
+    .opacity-field input[type=range] { width: 50px; }
   }
 </style>
 </head>
@@ -304,9 +341,17 @@
   <button class="btn" id="btnJiugong">＋ 九宫</button>
   <button class="btn" id="btnErshisi">＋ 二十四宫</button>
   <span class="divider"></span>
+  <button class="btn warn" id="btnNorth" title="所有图层正北朝上（现代地图视角，坎卦朝上）">正北</button>
+  <button class="btn info" id="btnSouth" title="所有图层正南朝上（传统罗盘视角，离卦朝上）">正南</button>
+  <span class="divider"></span>
   <label class="color-field">
     显示颜色
-    <input type="color" id="colorPicker" value="#1a7f7a">
+    <input type="color" id="colorPicker" value="#c62828">
+  </label>
+  <label class="opacity-field" title="调整宫格整体透明度（太极图始终为文字的 50%）">
+    透明度
+    <input type="range" id="opacitySlider" min="10" max="100" value="100" step="1">
+    <span class="opacity-value" id="opacityValue">100%</span>
   </label>
   <button class="btn" id="btnDelete">删除选中</button>
   <span class="spacer"></span>
@@ -318,7 +363,6 @@
   <div class="stage" id="stage">
     <canvas id="c"></canvas>
 
-    <!-- 坐标导航图 - 左上角 -->
     <div class="compass" title="方向指示（东、南、西、北）">
       <svg viewBox="0 0 100 100" width="100%" height="100%">
         <defs>
@@ -346,7 +390,6 @@
       </svg>
     </div>
 
-    <!-- ===== 画布提示 ===== -->
     <div class="hint" id="hint">
       <div class="hint-main">
         上传户型图 → 添加九宫 / 二十四宫 → 拖动调整 → 保存或下载
@@ -367,7 +410,6 @@
   </aside>
 </main>
 
-<!-- 命名输入模态框 -->
 <div class="modal-overlay" id="nameModal">
   <div class="modal name-modal">
     <div class="modal-header">
@@ -386,7 +428,6 @@
   </div>
 </div>
 
-<!-- 历史户型图模态框 -->
 <div class="modal-overlay" id="historyModal">
   <div class="modal">
     <div class="modal-header">
@@ -418,7 +459,25 @@ if (typeof fabric === 'undefined') {
 /* =====================================================
    1. 全局配置
    ===================================================== */
-var MAX_FILE_SIZE = 10 * 1024 * 1024;  // 10 MB 上限
+var MAX_FILE_SIZE = 10 * 1024 * 1024;  // 10 MB
+
+var FONT_XIAOZHUAN = '"方正小篆体","FZXiaoZhuanTi-S13T","汉仪小篆繁","STXiaozhuan","华文小篆","STKaiti","KaiTi","楷体","Kaiti SC","Songti SC","SimSun",serif';
+var FONT_SYMBOL = '"Segoe UI Symbol","Apple Symbols","Noto Sans Symbols","DejaVu Sans","Arial Unicode MS",serif';
+
+/* 八卦符号 */
+var GUA_SYMBOLS = {
+  '乾': '\u2630',
+  '兑': '\u2631',
+  '离': '\u2632',
+  '震': '\u2633',
+  '巽': '\u2634',
+  '坎': '\u2635',
+  '艮': '\u2636',
+  '坤': '\u2637',
+};
+
+/* ★ 太极图相对透明度：始终为文字的 50% */
+var TAIJI_RELATIVE_OPACITY = 0.5;
 
 /* =====================================================
    2. 初始化画布
@@ -628,74 +687,250 @@ canvas.on('object:scaling', function(e) {
 });
 
 /* =====================================================
-   7. 内置图层（名称已更新）
+   7. 宫格图层定义
    ===================================================== */
 var PRESETS = {
   jiugong: {
     name: '九宫',
     cols: 3,
     labels: [
-      ['巽', '离', '坤'],
-      ['震', '',  '兑'],
-      ['艮', '坎', '乾'],
+      ['乾', '坎', '艮'],
+      ['兑', '',  '震'],
+      ['坤', '离', '巽'],
     ],
+    hasSymbols: true,
+    centerTaiji: true,
+    taijiGridSize: 1,
   },
   ershisi: {
     name: '二十四宫',
     cols: 7,
     labels: [
-      ['巽', '巳', '丙', '午', '丁', '未', '坤'],
-      ['辰', '',  '',  '',  '',  '',  '申'],
-      ['乙', '',  '',  '',  '',  '',  '庚'],
-      ['卯', '',  '',  '',  '',  '',  '酉'],
-      ['甲', '',  '',  '',  '',  '',  '辛'],
-      ['寅', '',  '',  '',  '',  '',  '戌'],
-      ['艮', '丑', '癸', '子', '壬', '亥', '乾'],
+      ['乾', '亥', '壬', '子', '癸', '丑', '艮'],
+      ['戌', '',  '',  '',  '',  '',  '寅'],
+      ['辛', '',  '',  '',  '',  '',  '甲'],
+      ['酉', '',  '',  '',  '',  '',  '卯'],
+      ['庚', '',  '',  '',  '',  '',  '乙'],
+      ['申', '',  '',  '',  '',  '',  '辰'],
+      ['坤', '未', '丁', '午', '丙', '巳', '巽'],
     ],
+    hasSymbols: false,
+    centerTaiji: true,
+    taijiGridSize: 3,
   },
 };
 
-var currentColor = '#1a7f7a';
+var currentColor = '#c62828';
+var currentOpacity = 1.0;
 
+/* =====================================================
+   计算宫格尺寸以完全匹配户型图长宽
+   ===================================================== */
+function calcGridLayout() {
+  var objs = canvas.getObjects();
+  var planImg = null;
+
+  for (var i = 0; i < objs.length; i++) {
+    if (!objs[i].isPreset) {
+      planImg = objs[i];
+      break;
+    }
+  }
+
+  var width, height, centerLeft, centerTop;
+
+  if (planImg) {
+    width  = planImg.getScaledWidth();
+    height = planImg.getScaledHeight();
+    var center = planImg.getCenterPoint();
+    centerLeft = center.x;
+    centerTop  = center.y;
+  } else {
+    width  = canvas.getWidth() * 0.8;
+    height = canvas.getHeight() * 0.8;
+    centerLeft = canvas.getWidth() / 2;
+    centerTop  = canvas.getHeight() / 2;
+  }
+
+  var minSize = 120;
+  if (width  < minSize) width  = minSize;
+  if (height < minSize) height = minSize;
+
+  return {
+    width:  width,
+    height: height,
+    centerLeft: centerLeft,
+    centerTop:  centerTop,
+  };
+}
+
+/* =====================================================
+   ★★★ 创建太极图元素（默认透明度 = 50%）★★★
+   ===================================================== */
+function createTaijiItems(cx, cy, r, darkColor, lightColor) {
+  var items = [];
+
+  // 底圆（浅色 + 深色描边）
+  var bgCircle = new fabric.Circle({
+    left: cx, top: cy,
+    originX: 'center', originY: 'center',
+    radius: r,
+    fill: lightColor,
+    stroke: darkColor,
+    strokeWidth: Math.max(1.2, r * 0.05),
+    opacity: TAIJI_RELATIVE_OPACITY,   // ★ 50% 透明度
+  });
+  bgCircle.isTaijiBg = true;
+  bgCircle.isTaiji = true;
+  items.push(bgCircle);
+
+  // S 形深色区域
+  var pathStr =
+    'M ' + cx + ' ' + (cy - r) +
+    ' A ' + r + ' ' + r + ' 0 0 1 ' + cx + ' ' + (cy + r) +
+    ' A ' + (r / 2) + ' ' + (r / 2) + ' 0 0 1 ' + cx + ' ' + cy +
+    ' A ' + (r / 2) + ' ' + (r / 2) + ' 0 0 0 ' + cx + ' ' + (cy - r) +
+    ' Z';
+
+  var sPath = new fabric.Path(pathStr, {
+    fill: darkColor,
+    stroke: 'transparent',
+    strokeWidth: 0,
+    opacity: TAIJI_RELATIVE_OPACITY,   // ★ 50% 透明度
+  });
+  sPath.isTaijiDark = true;
+  sPath.isTaiji = true;
+  items.push(sPath);
+
+  // 深色小圆（上半中心）
+  var darkDot = new fabric.Circle({
+    left: cx, top: cy - r / 2,
+    originX: 'center', originY: 'center',
+    radius: r / 6,
+    fill: darkColor,
+    opacity: TAIJI_RELATIVE_OPACITY,   // ★ 50% 透明度
+  });
+  darkDot.isTaijiDark = true;
+  darkDot.isTaiji = true;
+  items.push(darkDot);
+
+  // 浅色小圆（下半中心）
+  var lightDot = new fabric.Circle({
+    left: cx, top: cy + r / 2,
+    originX: 'center', originY: 'center',
+    radius: r / 6,
+    fill: lightColor,
+    opacity: TAIJI_RELATIVE_OPACITY,   // ★ 50% 透明度
+  });
+  lightDot.isTaijiLight = true;
+  lightDot.isTaiji = true;
+  items.push(lightDot);
+
+  return items;
+}
+
+/* =====================================================
+   创建宫格 Group
+   ===================================================== */
 function createPresetGroup(key, color) {
   var p    = PRESETS[key];
   var cols = p.cols;
-  var size = Math.min(canvas.getWidth(), canvas.getHeight()) * 0.8;
-  var cell = size / cols;
-  var lineW = Math.max(1.4, cell * 0.022);
+
+  var layout = calcGridLayout();
+  var gridW  = layout.width;
+  var gridH  = layout.height;
+
+  var cellW = gridW / cols;
+  var cellH = gridH / cols;
+
+  var minCell = Math.min(cellW, cellH);
+  var lineW = Math.max(1.4, minCell * 0.022);
+
   var items = [];
 
+  /* ----- 网格线 ----- */
   for (var i = 0; i <= cols; i++) {
-    items.push(new fabric.Line([i * cell, 0, i * cell, size], {
+    items.push(new fabric.Line([i * cellW, 0, i * cellW, gridH], {
       stroke: color, strokeWidth: lineW,
     }));
-    items.push(new fabric.Line([0, i * cell, size, i * cell], {
+  }
+  for (var j = 0; j <= cols; j++) {
+    items.push(new fabric.Line([0, j * cellH, gridW, j * cellH], {
       stroke: color, strokeWidth: lineW,
     }));
   }
 
+  /* ----- 文字 + 卦象符号 ----- */
   p.labels.forEach(function(row, r) {
     row.forEach(function(ch, c) {
       if (!ch) return;
-      items.push(new fabric.Text(ch, {
-        left: c * cell + cell / 2,
-        top:  r * cell + cell / 2,
-        originX: 'center', originY: 'center',
-        fontSize: cell * 0.66,
-        fontFamily: '"KaiTi","STKaiti","Kaiti SC","楷体","Songti SC",serif',
-        fontWeight: 'bold',
-        fill: color,
-        angle: 0,
-      }));
+
+      var cx = c * cellW + cellW / 2;
+      var cy = r * cellH + cellH / 2;
+
+      if (p.hasSymbols && GUA_SYMBOLS[ch]) {
+        items.push(new fabric.Text(GUA_SYMBOLS[ch], {
+          left: cx,
+          top:  cy - cellH * 0.23,
+          originX: 'center', originY: 'center',
+          fontSize: minCell * 0.34,
+          fontFamily: FONT_SYMBOL,
+          fontWeight: 'bold',
+          fill: color,
+          angle: 0,
+        }));
+
+        items.push(new fabric.Text(ch, {
+          left: cx,
+          top:  cy + cellH * 0.26,
+          originX: 'center', originY: 'center',
+          fontSize: minCell * 0.40,
+          fontFamily: FONT_XIAOZHUAN,
+          fontWeight: 'bold',
+          fill: color,
+          angle: 0,
+        }));
+      } else {
+        items.push(new fabric.Text(ch, {
+          left: cx,
+          top:  cy,
+          originX: 'center', originY: 'center',
+          fontSize: minCell * 0.44,
+          fontFamily: FONT_XIAOZHUAN,
+          fontWeight: 'bold',
+          fill: color,
+          angle: 0,
+        }));
+      }
     });
   });
 
+  /* ----- 中心太极图 ----- */
+  if (p.centerTaiji) {
+    var centerCol = Math.floor(cols / 2);
+    var centerRow = Math.floor(cols / 2);
+    var centerX = centerCol * cellW + cellW / 2;
+    var centerY = centerRow * cellH + cellH / 2;
+
+    var taijiRadius;
+    if (p.taijiGridSize === 3) {
+      taijiRadius = minCell * 1.42;
+    } else {
+      taijiRadius = minCell * 0.42;
+    }
+
+    var taijiItems = createTaijiItems(centerX, centerY, taijiRadius, color, '#ffffff');
+    taijiItems.forEach(function(item) { items.push(item); });
+  }
+
   var g = new fabric.Group(items, {
-    left: canvas.getWidth() / 2,
-    top:  canvas.getHeight() / 2,
-    originX: 'center', originY: 'center',
+    left: layout.centerLeft,
+    top:  layout.centerTop,
+    originX: 'center',
+    originY: 'center',
     objectCaching: false,
     subTargetCheck: false,
+    opacity: currentOpacity,
   });
 
   g.layerName = p.name;
@@ -705,10 +940,21 @@ function createPresetGroup(key, color) {
   return g;
 }
 
+/* =====================================================
+   应用颜色到宫格
+   ===================================================== */
 function applyPresetColor(group, color) {
   group.getObjects().forEach(function(o) {
-    if (o.type === 'text')      o.set('fill', color);
-    else if (o.type === 'line') o.set('stroke', color);
+    if (o.type === 'text') {
+      o.set('fill', color);
+    } else if (o.type === 'line') {
+      o.set('stroke', color);
+    } else if (o.type === 'path' && o.isTaijiDark) {
+      o.set('fill', color);
+    } else if (o.type === 'circle') {
+      if (o.isTaijiDark) o.set('fill', color);
+      if (o.isTaijiBg)   o.set('stroke', color);
+    }
     o.dirty = true;
   });
   group.dirty = true;
@@ -729,7 +975,100 @@ document.getElementById('btnJiugong').onclick  = function() { addPresetLayer('ji
 document.getElementById('btnErshisi').onclick  = function() { addPresetLayer('ershisi'); };
 
 /* =====================================================
-   8. 工具函数
+   8. ★★★ 透明度调节（太极 = 整体 × 50%）★★★
+   =====================================================
+   实现原理：
+   - 太极图元素的 opacity 固定为 0.5（TAIJI_RELATIVE_OPACITY）
+   - Group 的 opacity 由滑块控制（0.1 ~ 1.0）
+   - 最终太极视觉 = group.opacity × 0.5
+   - 最终文字视觉 = group.opacity × 1.0
+   - 因此太极始终为文字的 50%
+   ===================================================== */
+var opacitySlider = document.getElementById('opacitySlider');
+var opacityValue  = document.getElementById('opacityValue');
+
+opacitySlider.addEventListener('input', function(e) {
+  var v = parseInt(e.target.value, 10);
+  currentOpacity = v / 100;
+  opacityValue.textContent = v + '%';
+
+  var percent = v + '%';
+  opacitySlider.style.background =
+    'linear-gradient(to right, #2f80ed 0%, #2f80ed ' + percent + ', #e3e6eb ' + percent + ', #e3e6eb 100%)';
+
+  // 只调整 Group 的透明度
+  // 太极图内部元素的 opacity 已经是 0.5，会随 Group 一起缩放
+  var actives = canvas.getActiveObjects().filter(function(o) { return o.isPreset; });
+  var targets = actives.length
+    ? actives
+    : canvas.getObjects().filter(function(o) { return o.isPreset; });
+
+  targets.forEach(function(g) {
+    g.set('opacity', currentOpacity);
+    g.dirty = true;
+  });
+
+  canvas.requestRenderAll();
+});
+
+/* 双击滑块快速重置为 100% */
+opacitySlider.addEventListener('dblclick', function() {
+  opacitySlider.value = 100;
+  currentOpacity = 1.0;
+  opacityValue.textContent = '100%';
+  opacitySlider.style.background =
+    'linear-gradient(to right, #2f80ed 0%, #2f80ed 100%, #e3e6eb 100%, #e3e6eb 100%)';
+  var targets = canvas.getObjects().filter(function(o) { return o.isPreset; });
+  targets.forEach(function(g) { g.set('opacity', 1.0); });
+  canvas.requestRenderAll();
+});
+
+(function initOpacityBg() {
+  opacitySlider.style.background =
+    'linear-gradient(to right, #2f80ed 0%, #2f80ed 100%, #e3e6eb 100%, #e3e6eb 100%)';
+})();
+
+/* =====================================================
+   9. 正北 / 正南（同步调整所有图层）
+   ===================================================== */
+function applyOrientationToAll(targetAngle, label) {
+  var objs = canvas.getObjects();
+
+  if (!objs.length) {
+    alert('画布上还没有图层，请先上传户型图或添加宫格');
+    return;
+  }
+
+  var planCount = 0;
+  var gridCount = 0;
+
+  objs.forEach(function(obj) {
+    var center = obj.getCenterPoint();
+    obj.set('angle', targetAngle);
+    obj.setPositionByOrigin(center, 'center', 'center');
+
+    if (obj.isPreset) {
+      updateTextOrientations(obj);
+      gridCount++;
+    } else {
+      planCount++;
+    }
+
+    obj.setCoords();
+  });
+
+  canvas.discardActiveObject();
+  canvas.requestRenderAll();
+  refreshLayers();
+
+  console.log('已同步调整 ' + planCount + ' 张户型图 + ' + gridCount + ' 个宫格为' + label + '朝上');
+}
+
+document.getElementById('btnNorth').onclick = function() { applyOrientationToAll(0, '正北'); };
+document.getElementById('btnSouth').onclick = function() { applyOrientationToAll(180, '正南'); };
+
+/* =====================================================
+   10. 工具函数
    ===================================================== */
 function readAsDataURL(file) {
   return new Promise(function(resolve, reject) {
@@ -763,7 +1102,7 @@ function formatFileSize(bytes) {
 }
 
 /* =====================================================
-   9. 生成合并图
+   11. 生成合并图
    ===================================================== */
 function generateMergedImage(multiplier, format, quality) {
   multiplier = multiplier || 2;
@@ -845,7 +1184,7 @@ function generateMergedImageForHistory() {
 }
 
 /* =====================================================
-   10. 历史户型图管理
+   12. 历史户型图管理
    ===================================================== */
 var HISTORY_KEY = 'huxing_history_v2';
 var MAX_HISTORY = 12;
@@ -928,7 +1267,7 @@ function renameHistoryItem(id, newName) {
 }
 
 /* =====================================================
-   11. 历史记录模态框
+   13. 历史记录模态框
    ===================================================== */
 var historyModal = document.getElementById('historyModal');
 var historyList  = document.getElementById('historyList');
@@ -1072,7 +1411,7 @@ document.getElementById('historyClearAll').onclick = function() {
 };
 
 /* =====================================================
-   12. 上传 / 加载户型图（含 10MB 限制）
+   14. 上传 / 加载户型图
    ===================================================== */
 function createImageOnCanvas(dataURL, name, historyId) {
   historyId = historyId || null;
@@ -1110,13 +1449,11 @@ function createImageOnCanvas(dataURL, name, historyId) {
 }
 
 async function handleFileUpload(file) {
-  // 1. 检查类型
   if (!file || !file.type || !file.type.startsWith('image/')) {
     alert('请选择图片文件（JPG、PNG、WebP 等格式）');
     return;
   }
 
-  // 2. ★ 检查文件大小（10MB 限制）
   if (file.size > MAX_FILE_SIZE) {
     alert(
       '图片过大，无法上传！\n\n' +
@@ -1130,12 +1467,10 @@ async function handleFileUpload(file) {
     return;
   }
 
-  // 3. 命名
   var defaultName = (file.name || '').replace(/\.[^.]+$/, '') || '未命名户型';
   var name = await askName(defaultName, '命名户型图');
   if (name === null) return;
 
-  // 4. 读取
   var dataURL;
   try {
     dataURL = await readAsDataURL(file);
@@ -1144,13 +1479,11 @@ async function handleFileUpload(file) {
     return;
   }
 
-  // 5. 保存原图到历史
   var savedOriginal = addHistoryItem(name, dataURL, 'original');
   if (!savedOriginal) {
     console.warn('原图体积过大，未能保存到历史。仍可正常加载到画布。');
   }
 
-  // 6. 加载到画布
   try {
     await createImageOnCanvas(dataURL, name, savedOriginal ? savedOriginal.id : null);
     currentPlanName = name;
@@ -1185,7 +1518,7 @@ document.getElementById('fileA').addEventListener('change', function(e) {
 });
 
 /* =====================================================
-   13. 颜色调节
+   15. 颜色调节
    ===================================================== */
 var colorPicker = document.getElementById('colorPicker');
 colorPicker.addEventListener('input', function(e) {
@@ -1198,7 +1531,7 @@ colorPicker.addEventListener('input', function(e) {
 });
 
 /* =====================================================
-   14. 图层面板列表
+   16. 图层面板列表
    ===================================================== */
 function refreshLayers() {
   var objs    = canvas.getObjects().slice().reverse();
@@ -1254,7 +1587,7 @@ canvas.on('selection:updated', refreshLayers);
 canvas.on('selection:cleared', refreshLayers);
 
 /* =====================================================
-   15. 删除选中 / 快捷键
+   17. 删除选中 / 快捷键
    ===================================================== */
 function deleteSelected() {
   var objs = canvas.getActiveObjects();
@@ -1283,7 +1616,7 @@ window.addEventListener('keydown', function(e) {
 });
 
 /* =====================================================
-   16. 保存到历史
+   18. 保存到历史
    ===================================================== */
 document.getElementById('btnSaveHistory').onclick = async function() {
   var objs = canvas.getObjects();
@@ -1301,9 +1634,6 @@ document.getElementById('btnSaveHistory').onclick = async function() {
   if (!dataURL) {
     alert(
       '生成合并图失败！\n\n' +
-      '可能原因：\n' +
-      '1. 浏览器隐私模式或安全策略限制\n' +
-      '2. 画布内容异常\n\n' +
       '建议：\n' +
       '• 尝试刷新页面后重试\n' +
       '• 关闭浏览器隐私模式\n' +
@@ -1329,7 +1659,7 @@ document.getElementById('btnSaveHistory').onclick = async function() {
 };
 
 /* =====================================================
-   17. 下载分析图
+   19. 下载分析图
    ===================================================== */
 document.getElementById('btnDownload').onclick = function() {
   var objs = canvas.getObjects();
@@ -1368,7 +1698,7 @@ document.getElementById('btnDownload').onclick = function() {
 };
 
 /* =====================================================
-   18. 启动
+   20. 启动
    ===================================================== */
 refreshLayers();
 updateHint();
